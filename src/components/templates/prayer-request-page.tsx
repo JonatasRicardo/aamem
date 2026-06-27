@@ -1,4 +1,4 @@
-import { HandHeart } from "lucide-react";
+import { CheckCircle2, CircleAlert, HandHeart, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,9 +9,37 @@ const PRAYER_DESCRIPTION =
 
 type PrayerRequestPageProps = {
   className?: string;
+  status?: "idle" | "loading" | "success" | "error";
 };
 
-export function PrayerRequestPage({ className }: PrayerRequestPageProps) {
+const statusContent = {
+  success: {
+    icon: CheckCircle2,
+    title: "Pedido enviado",
+    description:
+      "Recebemos seu pedido de oração. A igreja vai orar por você com carinho.",
+    className: "border-brand-rose/30 bg-secondary text-brand-cocoa",
+    iconClassName: "text-brand-rose",
+  },
+  error: {
+    icon: CircleAlert,
+    title: "Não foi possível enviar",
+    description:
+      "Tente novamente em alguns instantes ou procure outro canal de contato da igreja.",
+    className: "border-destructive/30 bg-destructive/10 text-brand-cocoa",
+    iconClassName: "text-destructive",
+  },
+};
+
+export function PrayerRequestPage({
+  className,
+  status = "idle",
+}: PrayerRequestPageProps) {
+  const isLoading = status === "loading";
+  const feedback =
+    status === "success" || status === "error" ? statusContent[status] : null;
+  const FeedbackIcon = feedback?.icon;
+
   return (
     <main
       className={cn(
@@ -34,13 +62,34 @@ export function PrayerRequestPage({ className }: PrayerRequestPageProps) {
           </p>
         </header>
 
-        <div className="space-y-3">
+        <div className="space-y-4">
+          {feedback && FeedbackIcon ? (
+            <div
+              className={cn(
+                "flex gap-3 rounded-xl border px-4 py-3 text-sm leading-6",
+                feedback.className
+              )}
+              role={status === "error" ? "alert" : "status"}
+            >
+              <FeedbackIcon
+                className={cn("mt-0.5 size-5 shrink-0", feedback.iconClassName)}
+                aria-hidden="true"
+              />
+              <div>
+                <p className="font-medium">{feedback.title}</p>
+                <p className="text-muted-foreground">{feedback.description}</p>
+              </div>
+            </div>
+          ) : null}
+
           <label className="sr-only" htmlFor="prayer-request">
             Pedido de oração
           </label>
           <Textarea
             id="prayer-request"
             placeholder="escreva aqui seu pedido"
+            disabled={isLoading}
+            aria-busy={isLoading}
             className="min-h-52 resize-none rounded-xl border-brand-rose/30 bg-white/80 px-4 py-4 text-base shadow-sm placeholder:text-brand-rose/70 focus-visible:border-brand-rose"
           />
         </div>
@@ -48,12 +97,26 @@ export function PrayerRequestPage({ className }: PrayerRequestPageProps) {
 
       <div className="fixed inset-x-0 bottom-0 border-t border-border bg-background/95 px-5 py-4 shadow-[0_-12px_40px_rgb(43_29_29/0.08)] backdrop-blur">
         <div className="mx-auto w-full max-w-xl">
-          <Button type="button" className="h-12 w-full text-base">
-            enviar pedido de oração
+          <Button
+            type="button"
+            className="h-12 w-full text-base"
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="animate-spin" aria-hidden="true" />
+                enviando pedido
+              </>
+            ) : status === "success" ? (
+              "pedido enviado"
+            ) : status === "error" ? (
+              "tentar enviar novamente"
+            ) : (
+              "enviar pedido de oração"
+            )}
           </Button>
         </div>
       </div>
     </main>
   );
 }
-

@@ -14,5 +14,26 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-export const Default: Story = {};
+export const Default: Story = {
+  args: {
+    status: "idle",
+  },
+};
 
+export const Loading: Story = {
+  args: {
+    status: "loading",
+  },
+};
+
+export const Success: Story = {
+  args: {
+    status: "success",
+  },
+};
+
+export const Error: Story = {
+  args: {
+    status: "error",
+  },
+};
