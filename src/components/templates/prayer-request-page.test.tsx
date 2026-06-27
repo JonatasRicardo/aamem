@@ -7,7 +7,13 @@ import { PrayerRequestPage } from "./prayer-request-page";
 function renderPrayerRequestPage(
   status?: ComponentProps<typeof PrayerRequestPage>["status"]
 ) {
-  return renderToStaticMarkup(<PrayerRequestPage status={status} />);
+  return renderToStaticMarkup(
+    <PrayerRequestPage
+      status={status}
+      institutionName="Igreja da Graça"
+      logoUrl="/logo.png"
+    />
+  );
 }
 
 describe("PrayerRequestPage", () => {
@@ -29,13 +35,35 @@ describe("PrayerRequestPage", () => {
     expect(html).toContain("disabled=\"\"");
   });
 
-  it("renders the success state feedback", () => {
+  it("renders the success state with optional contact fields", () => {
     const html = renderPrayerRequestPage("success");
 
-    expect(html).toContain("role=\"status\"");
-    expect(html).toContain("Pedido enviado");
-    expect(html).toContain("Recebemos seu pedido de oração");
-    expect(html).toContain("pedido enviado");
+    expect(html).toContain("Pedido de oração enviado.");
+    expect(html).toContain("Nós estaremos orando por você.");
+    expect(html).toContain("Igreja da Graça");
+    expect(html).toContain("Quer que a igreja entre em contato?");
+    expect(html).toContain("placeholder=\"seu nome\"");
+    expect(html).toContain("placeholder=\"(00) 00000-0000\"");
+    expect(html).toContain("quero contato");
+    expect(html).toContain("não obrigado");
+    expect(html).not.toContain("placeholder=\"escreva aqui seu pedido\"");
+  });
+
+  it("renders contact validation and submission feedback", () => {
+    const errorHtml = renderToStaticMarkup(
+      <PrayerRequestPage
+        status="success"
+        contactError="Informe um WhatsApp válido para a igreja entrar em contato."
+      />
+    );
+    const successHtml = renderToStaticMarkup(
+      <PrayerRequestPage status="success" contactStatus="success" />
+    );
+
+    expect(errorHtml).toContain("role=\"alert\"");
+    expect(errorHtml).toContain("WhatsApp válido");
+    expect(successHtml).toContain("role=\"status\"");
+    expect(successHtml).toContain("Contato enviado");
   });
 
   it("renders the error state feedback", () => {

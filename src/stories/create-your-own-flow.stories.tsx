@@ -52,22 +52,22 @@ export const HomeErroSlug: Story = {
   render: () => <HomeCreateTemplate slug="igreja-da-graca" slugStatus="error" />,
 };
 
-export const HomePopupFirebase: Story = {
+export const HomeConfirmarConta: Story = {
   render: () => (
     <HomeCreateTemplate
       slug="igreja-da-graca"
       slugStatus="available"
-      firebasePopupState="open"
+      authDialogState="open"
     />
   ),
 };
 
-export const HomeVoltandoDoFirebase: Story = {
+export const HomeContaConfirmada: Story = {
   render: () => (
     <HomeCreateTemplate
       slug="igreja-da-graca"
       slugStatus="available"
-      firebasePopupState="returning"
+      authDialogState="returning"
     />
   ),
 };

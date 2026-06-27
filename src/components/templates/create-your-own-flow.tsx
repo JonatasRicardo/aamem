@@ -9,7 +9,6 @@ import {
   Loader2,
   Palette,
   Pencil,
-  Sparkles,
 } from "lucide-react";
 
 import { AamemLogo } from "@/components/brand/aamem-logo";
@@ -27,15 +26,19 @@ export type SlugStatus =
 
 export type SubmitStatus = "idle" | "loading" | "success" | "error";
 export type HomeCreateCtaState = "idle" | "loading";
-export type FirebasePopupState = "closed" | "open" | "returning";
+export type AuthDialogState = "closed" | "open" | "returning";
 export type MinisiteTheme = "rose" | "indigo";
+export type EditableMinisiteField = "institutionName" | "description";
 
 export type HomeCreateTemplateProps = {
   className?: string;
   ctaState?: HomeCreateCtaState;
   slug?: string;
   slugStatus?: SlugStatus;
-  firebasePopupState?: FirebasePopupState;
+  authDialogState?: AuthDialogState;
+  onCreate?: () => void;
+  onGoogleContinue?: () => void;
+  onSlugChange?: (slug: string) => void;
 };
 
 export type CreateInstitutionTemplateProps = {
@@ -48,6 +51,15 @@ export type CreateInstitutionTemplateProps = {
   description?: string;
   theme?: MinisiteTheme;
   submitStatus?: SubmitStatus;
+  submitLabel?: string;
+  editableField?: EditableMinisiteField | null;
+  onEditableFieldChange?: (field: EditableMinisiteField | null) => void;
+  onInstitutionNameChange?: (institutionName: string) => void;
+  onDescriptionChange?: (description: string) => void;
+  onFieldEditEnd?: () => void;
+  onLogoChange?: (file: File) => void;
+  onSubmit?: () => void;
+  onThemeChange?: (theme: MinisiteTheme) => void;
 };
 
 export type InstitutionBioTemplateProps = {
@@ -187,7 +199,13 @@ function LogoPreview({
   );
 }
 
-function EditButton({ label }: { label: string }) {
+function EditButton({
+  label,
+  onClick,
+}: {
+  label: string;
+  onClick?: () => void;
+}) {
   return (
     <Button
       type="button"
@@ -195,6 +213,7 @@ function EditButton({ label }: { label: string }) {
       size="icon-sm"
       className="rounded-full bg-background/80 shadow-sm"
       aria-label={label}
+      onClick={onClick}
     >
       <Pencil className="size-3.5" aria-hidden="true" />
     </Button>
@@ -207,14 +226,28 @@ function MinisitePhoneMockup({
   slug,
   logoPreviewUrl,
   theme,
+  editableField,
+  onEditableFieldChange,
+  onInstitutionNameChange,
+  onDescriptionChange,
+  onFieldEditEnd,
+  onLogoChange,
 }: {
   institutionName: string;
   description: string;
   slug: string;
   logoPreviewUrl?: string;
   theme: MinisiteTheme;
+  editableField?: EditableMinisiteField | null;
+  onEditableFieldChange?: (field: EditableMinisiteField | null) => void;
+  onInstitutionNameChange?: (institutionName: string) => void;
+  onDescriptionChange?: (description: string) => void;
+  onFieldEditEnd?: () => void;
+  onLogoChange?: (file: File) => void;
 }) {
   const themeContent = MINISITE_THEME_CONTENT[theme];
+  const isEditingName = editableField === "institutionName";
+  const isEditingDescription = editableField === "description";
 
   return (
     <section aria-label="Mockup do minisite" className="mx-auto w-full max-w-[330px]">
@@ -234,35 +267,99 @@ function MinisitePhoneMockup({
                 className={themeContent.logoClassName}
               />
               <div className="absolute -right-1 -top-1">
-                <EditButton label="Editar logo da instituição" />
+                {onLogoChange ? (
+                  <>
+                    <label
+                      htmlFor="minisite-logo-upload"
+                      className="inline-flex size-7 cursor-pointer items-center justify-center rounded-full bg-background/80 text-brand-cocoa shadow-sm transition-colors hover:bg-muted"
+                      aria-label="Editar logo da instituição"
+                    >
+                      <Pencil className="size-3.5" aria-hidden="true" />
+                    </label>
+                    <input
+                      id="minisite-logo-upload"
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      className="sr-only"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        if (file) {
+                          onLogoChange(file);
+                        }
+                        event.currentTarget.value = "";
+                      }}
+                    />
+                  </>
+                ) : (
+                  <EditButton label="Editar logo da instituição" />
+                )}
               </div>
             </div>
 
             <div className="relative max-w-full px-8">
-              <h2
-                className={cn(
-                  "break-words text-2xl leading-tight",
-                  themeContent.textClassName
-                )}
-              >
-                {institutionName}
-              </h2>
+              {isEditingName ? (
+                <input
+                  autoFocus
+                  aria-label="Nome da instituição"
+                  value={institutionName}
+                  onChange={(event) =>
+                    onInstitutionNameChange?.(event.target.value)
+                  }
+                  onBlur={onFieldEditEnd}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === "Escape") {
+                      event.currentTarget.blur();
+                    }
+                  }}
+                  className={cn(
+                    "w-full min-w-0 rounded-lg border border-current/20 bg-background/90 px-2 py-1 text-center text-xl leading-tight text-brand-cocoa outline-none focus:ring-3 focus:ring-ring/40"
+                  )}
+                />
+              ) : (
+                <h2
+                  className={cn(
+                    "break-words text-2xl leading-tight",
+                    themeContent.textClassName
+                  )}
+                >
+                  {institutionName}
+                </h2>
+              )}
               <div className="absolute -right-1 top-0">
-                <EditButton label="Editar nome da instituição" />
+                <EditButton
+                  label="Editar nome da instituição"
+                  onClick={() => onEditableFieldChange?.("institutionName")}
+                />
               </div>
             </div>
 
             <div className="relative w-full px-7">
-              <p
-                className={cn(
-                  "break-words text-sm leading-6",
-                  themeContent.mutedClassName
-                )}
-              >
-                {description}
-              </p>
+              {isEditingDescription ? (
+                <textarea
+                  autoFocus
+                  aria-label="Descrição do minisite"
+                  value={description}
+                  onChange={(event) => onDescriptionChange?.(event.target.value)}
+                  onBlur={onFieldEditEnd}
+                  className={cn(
+                    "min-h-28 w-full resize-none rounded-lg border border-current/20 bg-background/90 px-2 py-2 text-center text-sm leading-6 text-brand-cocoa outline-none focus:ring-3 focus:ring-ring/40"
+                  )}
+                />
+              ) : (
+                <p
+                  className={cn(
+                    "break-words text-sm leading-6",
+                    themeContent.mutedClassName
+                  )}
+                >
+                  {description}
+                </p>
+              )}
               <div className="absolute -right-1 top-0">
-                <EditButton label="Editar descrição do minisite" />
+                <EditButton
+                  label="Editar descrição do minisite"
+                  onClick={() => onEditableFieldChange?.("description")}
+                />
               </div>
             </div>
 
@@ -310,12 +407,15 @@ export function HomeCreateTemplate({
   ctaState = "idle",
   slug = "igreja-da-graca",
   slugStatus = "available",
-  firebasePopupState = "closed",
+  authDialogState = "closed",
+  onCreate,
+  onGoogleContinue,
+  onSlugChange,
 }: HomeCreateTemplateProps) {
   const isLoading = ctaState === "loading";
-  const hasFirebasePopup = firebasePopupState !== "closed";
-  const isReturning = firebasePopupState === "returning";
-  const canCreate = slugStatus === "available" && !isLoading && !hasFirebasePopup;
+  const hasAuthDialog = authDialogState !== "closed";
+  const isReturning = authDialogState === "returning";
+  const canCreate = slugStatus === "available" && !isLoading && !hasAuthDialog;
 
   return (
     <main
@@ -341,7 +441,8 @@ export function HomeCreateTemplate({
                 id="home-slug"
                 name="slug"
                 value={slug}
-                readOnly
+                readOnly={!onSlugChange}
+                onChange={(event) => onSlugChange?.(event.target.value)}
                 required
                 className="h-12 min-w-0 flex-1 bg-transparent px-3 font-mono text-base outline-none"
                 aria-describedby="home-slug-feedback"
@@ -351,13 +452,18 @@ export function HomeCreateTemplate({
               <SlugFeedback status={slugStatus} />
             </div>
           </div>
-          <Button className="h-11 w-full rounded-lg px-4" disabled={!canCreate}>
+          <Button
+            className="h-11 w-full rounded-lg px-4"
+            disabled={!canCreate}
+            onClick={onCreate}
+            type="button"
+          >
             {isLoading || isReturning ? (
               <>
                 <Loader2 className="animate-spin" aria-hidden="true" />
                 {isReturning ? "voltando para o site" : "abrindo"}
               </>
-            ) : hasFirebasePopup ? (
+            ) : hasAuthDialog ? (
               "login aberto"
             ) : (
               <>
@@ -369,32 +475,31 @@ export function HomeCreateTemplate({
         </div>
       </section>
 
-      {hasFirebasePopup ? (
+      {hasAuthDialog ? (
         <div className="fixed inset-0 flex items-center justify-center bg-brand-cocoa/35 px-5 backdrop-blur-sm">
           <section
-            aria-label="Popup do Firebase"
+            aria-label="Confirmação de conta"
             className="w-full max-w-sm rounded-lg border border-border bg-background p-5 text-left shadow-2xl"
             role="dialog"
           >
             <div className="mb-5 flex items-start justify-between gap-4">
               <div className="space-y-1">
                 <p className="font-mono text-xs text-muted-foreground">
-                  Firebase Authentication
+                  aamém
                 </p>
                 <h2 className="text-xl leading-tight text-brand-cocoa">
-                  {isReturning ? "Login confirmado" : "Entrar com Google"}
+                  {isReturning ? "Conta confirmada" : "Confirme sua conta"}
                 </h2>
               </div>
               <Badge variant="secondary" className="h-6 rounded-lg">
-                popup
+                seguro
               </Badge>
             </div>
 
             {isReturning ? (
               <div className="space-y-4">
                 <p className="text-sm leading-6 text-brand-lavender">
-                  O Firebase autenticou a pessoa e está devolvendo para
-                  continuar em aamem.com/{slug}.
+                  Estamos preparando aamem.com/{slug} para você continuar.
                 </p>
                 <div
                   className="flex items-center gap-2 rounded-lg border border-brand-rose/30 bg-secondary px-3 py-2 text-sm text-brand-cocoa"
@@ -407,11 +512,14 @@ export function HomeCreateTemplate({
             ) : (
               <div className="space-y-4">
                 <p className="text-sm leading-6 text-brand-lavender">
-                  Ao clicar em criar conta, o Firebase abre este popup para
-                  autenticar com Google e depois retorna ao site.
+                  Para reservar este link e criar seu minisite, confirme sua
+                  conta com segurança.
                 </p>
-                <Button className="h-11 w-full" type="button">
-                  <Sparkles aria-hidden="true" />
+                <Button
+                  className="h-11 w-full"
+                  type="button"
+                  onClick={onGoogleContinue}
+                >
                   continuar com Google
                 </Button>
               </div>
@@ -433,6 +541,15 @@ export function CreateInstitutionTemplate({
   description = "Um espaço simples para receber pedidos de oração e caminhar junto em fé.",
   theme = "rose",
   submitStatus = "idle",
+  submitLabel = "criar conta e minisite",
+  editableField,
+  onEditableFieldChange,
+  onInstitutionNameChange,
+  onDescriptionChange,
+  onFieldEditEnd,
+  onLogoChange,
+  onSubmit,
+  onThemeChange,
 }: CreateInstitutionTemplateProps) {
   const isLoading = submitStatus === "loading";
   const submitFeedback = SUBMIT_STATUS_CONTENT[submitStatus];
@@ -481,6 +598,7 @@ export function CreateInstitutionTemplate({
                     variant={isSelected ? "default" : "outline"}
                     className="h-11 justify-start"
                     aria-pressed={isSelected}
+                    onClick={() => onThemeChange?.(themeOption)}
                   >
                     <span
                       className={cn(
@@ -504,7 +622,7 @@ export function CreateInstitutionTemplate({
           <div className="mb-2 flex items-center justify-between gap-3">
             <h2 className="text-sm text-brand-cocoa">Dados confirmados</h2>
             <Badge variant="outline" className="h-6 rounded-lg">
-              Firebase
+              conta segura
             </Badge>
           </div>
           <dl className="space-y-2 text-sm">
@@ -531,6 +649,12 @@ export function CreateInstitutionTemplate({
           slug={slug}
           logoPreviewUrl={logoPreviewUrl}
           theme={theme}
+          editableField={editableField}
+          onEditableFieldChange={onEditableFieldChange}
+          onInstitutionNameChange={onInstitutionNameChange}
+          onDescriptionChange={onDescriptionChange}
+          onFieldEditEnd={onFieldEditEnd}
+          onLogoChange={onLogoChange}
         />
       </section>
 
@@ -552,7 +676,12 @@ export function CreateInstitutionTemplate({
 
       <div className="fixed inset-x-0 bottom-0 border-t border-border bg-background/95 px-5 py-4 shadow-[0_-12px_40px_rgb(43_29_29/0.08)] backdrop-blur">
         <div className="mx-auto max-w-md">
-          <Button type="button" className="h-12 w-full" disabled={isLoading}>
+          <Button
+            type="button"
+            className="h-12 w-full"
+            disabled={isLoading}
+            onClick={onSubmit}
+          >
             {isLoading ? (
               <>
                 <Loader2 className="animate-spin" aria-hidden="true" />
@@ -560,7 +689,7 @@ export function CreateInstitutionTemplate({
               </>
             ) : (
               <>
-                criar conta e minisite
+                {submitLabel}
                 <ArrowRight aria-hidden="true" />
               </>
             )}

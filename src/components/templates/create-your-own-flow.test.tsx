@@ -50,39 +50,39 @@ describe("create your own templates", () => {
     }
   );
 
-  it("renders the Firebase popup state after the home CTA", () => {
+  it("renders the account confirmation state after the home CTA", () => {
     const html = renderToStaticMarkup(
       <HomeCreateTemplate
         slug="igreja-da-graca"
         slugStatus="available"
-        firebasePopupState="open"
+        authDialogState="open"
       />
     );
 
-    expect(html).toContain("Firebase Authentication");
-    expect(html).toContain("Entrar com Google");
+    expect(html).toContain("Confirme sua conta");
     expect(html).toContain("continuar com Google");
-    expect(html).toContain("retorna ao site");
+    expect(html).toContain("reservar este link");
+    expect(html).not.toContain("Firebase");
   });
 
-  it("renders the Firebase return state", () => {
+  it("renders the account confirmed state", () => {
     const html = renderToStaticMarkup(
       <HomeCreateTemplate
         slug="igreja-da-graca"
         slugStatus="available"
-        firebasePopupState="returning"
+        authDialogState="returning"
       />
     );
 
-    expect(html).toContain("Login confirmado");
+    expect(html).toContain("Conta confirmada");
     expect(html).toContain("voltando para o site");
-    expect(html).toContain("continuar em aamem.com/igreja-da-graca");
+    expect(html).toContain("preparando aamem.com/igreja-da-graca");
   });
 
   it("renders the authenticated minisite creation mockup", () => {
     const html = renderCreateTemplate();
 
-    expect(html).not.toContain("O Firebase vai cuidar do login");
+    expect(html).not.toContain("Firebase");
     expect(html).toContain("Mockup do minisite");
     expect(html).toContain("Monte o minisite");
     expect(html).toContain("Igreja da Graça");
@@ -95,9 +95,34 @@ describe("create your own templates", () => {
     expect(html).toContain("claro rose");
     expect(html).toContain("indigo");
     expect(html).toContain("Dados confirmados");
+    expect(html).toContain("conta segura");
     expect(html).toContain("Ana Souza");
     expect(html).toContain("ana@igreja.com");
     expect(html).toContain("Pedido de oração");
+  });
+
+  it("renders editable fields inside the phone mockup", () => {
+    const nameHtml = renderToStaticMarkup(
+      <CreateInstitutionTemplate
+        institutionName="Igreja da Graça"
+        description="Um espaço simples para receber pedidos de oração."
+        editableField="institutionName"
+      />
+    );
+    const descriptionHtml = renderToStaticMarkup(
+      <CreateInstitutionTemplate
+        institutionName="Igreja da Graça"
+        description="Um espaço simples para receber pedidos de oração."
+        editableField="description"
+      />
+    );
+
+    expect(nameHtml).toContain("aria-label=\"Nome da instituição\"");
+    expect(nameHtml).toContain("value=\"Igreja da Graça\"");
+    expect(descriptionHtml).toContain("aria-label=\"Descrição do minisite\"");
+    expect(descriptionHtml).toContain(
+      "Um espaço simples para receber pedidos de oração."
+    );
   });
 
   it("renders the public institution bio page", () => {
