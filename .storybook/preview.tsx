@@ -4,9 +4,15 @@ import '../src/app/globals.css'
 
 const preview: Preview = {
   decorators: [
-    (Story) => (
+    (Story, context) => (
       <TooltipProvider>
-        <div className="min-h-screen bg-background p-8 text-foreground">
+        <div
+          className={
+            context.parameters.layout === "fullscreen"
+              ? "min-h-screen bg-background text-foreground"
+              : "min-h-screen bg-background p-8 text-foreground"
+          }
+        >
           <Story />
         </div>
       </TooltipProvider>
