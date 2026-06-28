@@ -101,6 +101,65 @@ describe("create your own templates", () => {
     expect(html).toContain("Pedido de oração");
   });
 
+  it("renders the quick edit minisite editor without onboarding copy", () => {
+    const html = renderToStaticMarkup(
+      <CreateInstitutionTemplate
+        embedded
+        quickEdit
+        institutionName="Igreja da Graça"
+        personName="Ana Souza"
+        email="ana@igreja.com"
+        slug="igreja-da-graca"
+        description="Um espaço simples para receber pedidos de oração."
+        submitLabel="publicar alterações"
+        submitDisabled
+        submitActionContainerClassName="fixed bottom-24 bg-background"
+        onSubmit={() => undefined}
+      />
+    );
+
+    expect(html).toContain("aria-label=\"Editor do minisite\"");
+    expect(html).toContain("aria-label=\"Mockup do minisite\"");
+    expect(html).toContain("Tema do minisite");
+    expect(html).toContain("publicar alterações");
+    expect(html).toContain("disabled=\"\"");
+    expect(html).toContain("fixed bottom-24 bg-background");
+    expect(html).not.toContain("Monte o minisite");
+    expect(html).not.toContain("Dados confirmados");
+    expect(html).not.toContain("conta segura");
+  });
+
+  it.each([
+    ["success", "Minisite publicado com sucesso.", "role=\"status\""],
+    [
+      "error",
+      "Não foi possível criar agora. Tente novamente em instantes.",
+      "role=\"alert\"",
+    ],
+  ] as const)(
+    "renders fixed submit feedback for the %s state",
+    (submitStatus, feedbackText, role) => {
+      const html = renderToStaticMarkup(
+        <CreateInstitutionTemplate
+          embedded
+          quickEdit
+          institutionName="Igreja da Graça"
+          slug="igreja-da-graca"
+          description="Um espaço simples para receber pedidos de oração."
+          submitLabel="publicar alterações"
+          submitStatus={submitStatus}
+          submitActionContainerClassName="fixed bottom-24 bg-background"
+          onSubmit={() => undefined}
+        />
+      );
+
+      expect(html).toContain("fixed bottom-24 bg-background");
+      expect(html).toContain(feedbackText);
+      expect(html).toContain(role);
+      expect(html).toContain("publicar alterações");
+    }
+  );
+
   it("renders editable fields inside the phone mockup", () => {
     const nameHtml = renderToStaticMarkup(
       <CreateInstitutionTemplate

@@ -19,6 +19,20 @@ const createArgs = {
   logoPreviewUrl: LOGO_PREVIEW_URL,
 };
 
+const quickEditActionContainerClassName =
+  "fixed inset-x-0 bottom-24 border-t border-border bg-background/95 px-5 py-4 shadow-[0_-12px_40px_rgb(43_29_29/0.08)] backdrop-blur";
+
+const quickEditArgs = {
+  ...createArgs,
+  embedded: true,
+  quickEdit: true,
+  className: "min-h-svh bg-background px-5 pb-56 pt-7",
+  submitLabel: "publicar alterações",
+  submitLoadingLabel: "publicando",
+  submitActionContainerClassName: quickEditActionContainerClassName,
+  onSubmit: () => undefined,
+};
+
 const meta = {
   title: "Templates/Criar o seu",
   parameters: {
@@ -85,6 +99,46 @@ export const CriacaoEnviando: Story = {
     <CreateInstitutionTemplate
       {...createArgs}
       submitStatus="loading"
+    />
+  ),
+};
+
+export const EdicaoPublicadaSemAlteracoes: Story = {
+  render: () => (
+    <CreateInstitutionTemplate
+      {...quickEditArgs}
+      submitDisabled
+    />
+  ),
+};
+
+export const EdicaoPublicadaComAlteracoes: Story = {
+  render: () => <CreateInstitutionTemplate {...quickEditArgs} />,
+};
+
+export const EdicaoPublicadaPublicando: Story = {
+  render: () => (
+    <CreateInstitutionTemplate
+      {...quickEditArgs}
+      submitStatus="loading"
+    />
+  ),
+};
+
+export const EdicaoPublicadaSucesso: Story = {
+  render: () => (
+    <CreateInstitutionTemplate
+      {...quickEditArgs}
+      submitStatus="success"
+    />
+  ),
+};
+
+export const EdicaoPublicadaErro: Story = {
+  render: () => (
+    <CreateInstitutionTemplate
+      {...quickEditArgs}
+      submitStatus="error"
     />
   ),
 };

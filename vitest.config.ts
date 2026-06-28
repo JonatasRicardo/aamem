@@ -17,6 +17,9 @@ export default defineConfig({
       '@': path.join(dirname, 'src'),
     },
   },
+  optimizeDeps: {
+    include: ['next/link'],
+  },
   test: {
     projects: [
       {
