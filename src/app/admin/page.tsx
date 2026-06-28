@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight, HandHeart, Link as LinkIcon, UserRound } from "lucide-react";
 
 import { AamemLogo } from "@/components/brand/aamem-logo";
+import { AdminPrayerQrCode } from "@/components/templates/admin-home-actions";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -137,6 +138,11 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
             );
           })}
         </section>
+
+        <AdminPrayerQrCode
+          institutionName={selectedTenant.institutionName}
+          prayerRequestPath={`/${selectedTenant.tenant}/pedido-de-oracao`}
+        />
       </div>
     </main>
   );
