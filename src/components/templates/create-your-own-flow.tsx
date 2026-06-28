@@ -7,8 +7,10 @@ import {
   ImagePlus,
   Link as LinkIcon,
   Loader2,
+  LogIn,
   Palette,
   Pencil,
+  UserRound,
 } from "lucide-react";
 
 import { AamemLogo } from "@/components/brand/aamem-logo";
@@ -33,10 +35,13 @@ export type EditableMinisiteField = "institutionName" | "description";
 export type HomeCreateTemplateProps = {
   className?: string;
   ctaState?: HomeCreateCtaState;
+  currentUserName?: string;
+  loginState?: HomeCreateCtaState;
   slug?: string;
   slugStatus?: SlugStatus;
   authDialogState?: AuthDialogState;
   onCreate?: () => void;
+  onLogin?: () => void;
   onGoogleContinue?: () => void;
   onSlugChange?: (slug: string) => void;
 };
@@ -410,25 +415,62 @@ function SlugFeedback({ status }: { status: SlugStatus }) {
 export function HomeCreateTemplate({
   className,
   ctaState = "idle",
+  currentUserName,
+  loginState = "idle",
   slug = "igreja-da-graca",
   slugStatus = "available",
   authDialogState = "closed",
   onCreate,
+  onLogin,
   onGoogleContinue,
   onSlugChange,
 }: HomeCreateTemplateProps) {
   const isLoading = ctaState === "loading";
+  const isLoginLoading = loginState === "loading";
   const hasAuthDialog = authDialogState !== "closed";
   const isReturning = authDialogState === "returning";
   const canCreate = slugStatus === "available" && !isLoading && !hasAuthDialog;
+  const cleanUserName = currentUserName?.trim();
+  const displayUserName = cleanUserName?.split(/\s+/)[0] ?? "";
+  const hasCurrentUser = Boolean(cleanUserName);
 
   return (
     <main
       className={cn(
-        "flex min-h-svh flex-col items-center justify-center bg-background px-6 py-12 text-foreground",
+        "relative flex min-h-svh flex-col items-center justify-center bg-background px-6 py-16 text-foreground",
         className
       )}
     >
+      <Button
+        type="button"
+        variant="secondary"
+        className="absolute right-5 top-5 h-9 max-w-[calc(100vw-2.5rem)] rounded-lg px-3 shadow-sm"
+        disabled={isLoginLoading}
+        aria-label={
+          hasCurrentUser
+            ? `Entrar no admin como ${cleanUserName}`
+            : "Entrar com login"
+        }
+        onClick={onLogin}
+      >
+        {isLoginLoading ? (
+          <Loader2 className="animate-spin" aria-hidden="true" />
+        ) : hasCurrentUser ? (
+          <UserRound aria-hidden="true" />
+        ) : (
+          <LogIn aria-hidden="true" />
+        )}
+        <span className="min-w-0 truncate">
+          {isLoginLoading
+            ? hasCurrentUser
+              ? "abrindo admin"
+              : "entrando"
+            : hasCurrentUser
+              ? `Olá, ${displayUserName}`
+              : "entrar"}
+        </span>
+      </Button>
+
       <section className="flex w-full max-w-[420px] flex-col items-center gap-8">
         <AamemLogo priority className="h-auto w-full max-w-[330px]" />
         <div className="w-full space-y-5 text-center">

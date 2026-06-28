@@ -19,13 +19,24 @@ type MinisiteResponse = {
   error?: string;
 };
 
-export function CreateYourOwnHomeFlow() {
+type CurrentHomeUser = {
+  name?: string;
+  email?: string;
+} | null;
+
+export function CreateYourOwnHomeFlow({
+  currentUser,
+}: {
+  currentUser?: CurrentHomeUser;
+}) {
   const router = useRouter();
   const [rawSlug, setRawSlug] = useState("");
   const [slugStatus, setSlugStatus] = useState<SlugStatus>("checking");
   const [authDialogState, setAuthDialogState] =
     useState<AuthDialogState>("closed");
-  const [isPending, startTransition] = useTransition();
+  const [loginStatus, setLoginStatus] = useState<"idle" | "loading">("idle");
+  const [isCreatePending, startCreateTransition] = useTransition();
+  const [isAdminPending, startAdminTransition] = useTransition();
 
   const slugInput = useMemo(() => normalizeTenantSlugInput(rawSlug), [rawSlug]);
   const displaySlugStatus: SlugStatus =
@@ -100,7 +111,7 @@ export function CreateYourOwnHomeFlow() {
         throw new Error(payload.error ?? "Nao foi possivel criar o minisite.");
       }
 
-      startTransition(() => {
+      startCreateTransition(() => {
         router.push(payload.redirectTo!);
       });
     } catch {
@@ -109,13 +120,53 @@ export function CreateYourOwnHomeFlow() {
     }
   }
 
+  async function handleLogin() {
+    if (loginStatus === "loading") {
+      return;
+    }
+
+    if (currentUser) {
+      startAdminTransition(() => {
+        router.push("/admin");
+      });
+      return;
+    }
+
+    setLoginStatus("loading");
+
+    try {
+      const { idToken } = await signInWithGoogle();
+
+      const sessionResponse = await fetch("/api/auth/session", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ idToken }),
+      });
+
+      if (!sessionResponse.ok) {
+        throw new Error("Nao foi possivel criar a sessao.");
+      }
+
+      startAdminTransition(() => {
+        router.push("/admin");
+      });
+    } catch {
+      setLoginStatus("idle");
+    }
+  }
+
   return (
     <HomeCreateTemplate
       slug={slugInput}
       slugStatus={displaySlugStatus}
       authDialogState={authDialogState}
-      ctaState={isPending ? "loading" : "idle"}
+      ctaState={isCreatePending ? "loading" : "idle"}
+      currentUserName={currentUser?.name ?? currentUser?.email}
+      loginState={
+        loginStatus === "loading" || isAdminPending ? "loading" : "idle"
+      }
       onCreate={handleCreate}
+      onLogin={handleLogin}
       onGoogleContinue={handleGoogleContinue}
       onSlugChange={setRawSlug}
     />

@@ -31,7 +31,21 @@ describe("create your own templates", () => {
     expect(html).toContain("igreja-da-graca");
     expect(html).toContain("Link disponível para criar.");
     expect(html).toContain("criar conta");
+    expect(html).toContain("entrar");
     expect(html).toContain("Crie uma página simples");
+  });
+
+  it("renders the admin shortcut when the user is authenticated", () => {
+    const html = renderToStaticMarkup(
+      <HomeCreateTemplate
+        slug="igreja-da-graca"
+        slugStatus="available"
+        currentUserName="Ana Souza"
+      />
+    );
+
+    expect(html).toContain("Olá, Ana");
+    expect(html).toContain("Entrar no admin como Ana Souza");
   });
 
   it.each([

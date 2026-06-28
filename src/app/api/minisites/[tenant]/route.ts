@@ -2,6 +2,7 @@ import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth/session";
+import { isSuperAdmin } from "@/lib/admin/context";
 import { tenantTag } from "@/lib/tenants/cache-tags";
 import { TenantError, updateTenantConfig } from "@/lib/tenants/data";
 import { normalizeTenantSlug } from "@/lib/tenants/paths";
@@ -33,6 +34,7 @@ export async function PATCH(request: Request, { params }: MinisiteRouteContext) 
     await updateTenantConfig({
       tenant,
       ownerUid: user.uid,
+      canAccessAllTenants: isSuperAdmin(user),
       institutionName: body.institutionName,
       description: body.description,
       themeId: body.themeId,

@@ -300,14 +300,27 @@ export async function listOwnerTenants(ownerUid: string) {
     );
 }
 
+export async function listAllTenants() {
+  const snapshot = await getAdminDb().collection("tenants").get();
+
+  return snapshot.docs
+    .map((doc) => tenantFromSnapshot(doc))
+    .filter((tenant): tenant is TenantConfig => Boolean(tenant))
+    .sort(
+      (a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0)
+    );
+}
+
 export async function listOwnerPrayerRequests({
   tenant,
   ownerUid,
+  canAccessAllTenants = false,
 }: {
   tenant: string;
   ownerUid: string;
+  canAccessAllTenants?: boolean;
 }) {
-  await getOwnerTenant(tenant, ownerUid);
+  await getOwnerTenant(tenant, ownerUid, canAccessAllTenants);
 
   const snapshot = await getAdminDb()
     .collection("tenants")
@@ -345,7 +358,11 @@ export async function deleteOwnerTenants(ownerUid: string) {
   return tenants;
 }
 
-export async function getOwnerTenant(tenant: string, ownerUid: string) {
+export async function getOwnerTenant(
+  tenant: string,
+  ownerUid: string,
+  canAccessAllTenants = false
+) {
   assertTenantSlug(tenant);
   const config = await getTenantConfigUncached(tenant);
 
@@ -353,7 +370,7 @@ export async function getOwnerTenant(tenant: string, ownerUid: string) {
     throw new TenantError("Minisite nao encontrado.", "not-found");
   }
 
-  if (config.ownerUid !== ownerUid) {
+  if (!canAccessAllTenants && config.ownerUid !== ownerUid) {
     throw new TenantError("Voce nao pode alterar este minisite.", "forbidden");
   }
 
@@ -363,6 +380,7 @@ export async function getOwnerTenant(tenant: string, ownerUid: string) {
 export async function updateTenantPage({
   tenant,
   ownerUid,
+  canAccessAllTenants = false,
   path,
   title,
   description,
@@ -370,12 +388,13 @@ export async function updateTenantPage({
 }: {
   tenant: string;
   ownerUid: string;
+  canAccessAllTenants?: boolean;
   path: string;
   title?: string;
   description?: string;
   blocks?: Array<Record<string, unknown>>;
 }) {
-  await getOwnerTenant(tenant, ownerUid);
+  await getOwnerTenant(tenant, ownerUid, canAccessAllTenants);
 
   const snapshot = await getAdminDb()
     .collection("tenants")
@@ -400,17 +419,19 @@ export async function updateTenantPage({
 export async function updateTenantConfig({
   tenant,
   ownerUid,
+  canAccessAllTenants = false,
   institutionName,
   description,
   themeId,
 }: {
   tenant: string;
   ownerUid: string;
+  canAccessAllTenants?: boolean;
   institutionName?: string;
   description?: string;
   themeId?: string;
 }) {
-  await getOwnerTenant(tenant, ownerUid);
+  await getOwnerTenant(tenant, ownerUid, canAccessAllTenants);
 
   const cleanInstitutionName = institutionName?.trim();
   const cleanDescription = description?.trim();
@@ -452,11 +473,13 @@ export async function updateTenantConfig({
 export async function publishTenantPages({
   tenant,
   ownerUid,
+  canAccessAllTenants = false,
 }: {
   tenant: string;
   ownerUid: string;
+  canAccessAllTenants?: boolean;
 }) {
-  await getOwnerTenant(tenant, ownerUid);
+  await getOwnerTenant(tenant, ownerUid, canAccessAllTenants);
 
   const db = getAdminDb();
   const tenantRef = db.collection("tenants").doc(tenant);
@@ -484,13 +507,15 @@ export async function publishTenantPages({
 export async function saveTenantLogo({
   tenant,
   ownerUid,
+  canAccessAllTenants = false,
   file,
 }: {
   tenant: string;
   ownerUid: string;
+  canAccessAllTenants?: boolean;
   file: File;
 }) {
-  await getOwnerTenant(tenant, ownerUid);
+  await getOwnerTenant(tenant, ownerUid, canAccessAllTenants);
 
   const bucket = getAdminStorage().bucket();
   const bytes = Buffer.from(await file.arrayBuffer());

@@ -1,10 +1,17 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { AdminPrayerQrCode } from "./admin-home-actions";
+import { AdminPrayerQrCode, LogoutButton } from "./admin-home-actions";
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    refresh: vi.fn(),
+    replace: vi.fn(),
+  }),
+}));
 
 describe("AdminPrayerQrCode", () => {
-  it("renders the prayer request QR generator", () => {
+  it("renders the prayer request QR button", () => {
     const html = renderToStaticMarkup(
       <AdminPrayerQrCode
         institutionName="Igreja da Graça"
@@ -12,11 +19,18 @@ describe("AdminPrayerQrCode", () => {
       />
     );
 
-    expect(html).toContain("QR Code Pedido de Oração");
-    expect(html).toContain("Igreja da Graça");
-    expect(html).toContain("/igreja-da-graca/pedido-de-oracao");
+    expect(html).toContain("QR Code");
     expect(html).toContain("copiar link");
-    expect(html).toContain("gerar QR Code");
-    expect(html).not.toContain("baixar");
+    expect(html).not.toContain("QR Code Pedido de Oração");
+    expect(html).not.toContain("/igreja-da-graca/pedido-de-oracao");
+    expect(html).not.toContain("baixar QR");
+  });
+});
+
+describe("LogoutButton", () => {
+  it("renders the admin logout action", () => {
+    const html = renderToStaticMarkup(<LogoutButton />);
+
+    expect(html).toContain("sair");
   });
 });

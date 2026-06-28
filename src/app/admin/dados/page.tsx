@@ -2,7 +2,11 @@ import Link from "next/link";
 import { ArrowLeft, Mail, UserRound } from "lucide-react";
 
 import { AamemLogo } from "@/components/brand/aamem-logo";
-import { DeleteAccountButton } from "@/components/templates/admin-home-actions";
+import {
+  DeleteAccountButton,
+  LogoutButton,
+} from "@/components/templates/admin-home-actions";
+import { AdminTenantSelector } from "@/components/templates/admin-tenant-selector";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,20 +30,32 @@ type AdminProfilePageProps = {
 export default async function AdminProfilePage({
   searchParams,
 }: AdminProfilePageProps) {
-  const { user, selectedTenant, displayName, displayEmail } =
-    await getAdminContext(searchParams);
+  const {
+    user,
+    tenants,
+    selectedTenant,
+    selectedTenantOwner,
+    canAccessAllTenants,
+    displayName,
+    displayEmail,
+  } = await getAdminContext(searchParams);
 
   return (
     <main className="min-h-svh bg-background px-5 py-7 text-foreground">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
         <header className="space-y-5">
-          <AamemLogo priority className="h-auto w-28" />
-          <Button asChild variant="ghost" className="h-9 px-0">
-            <Link href={adminTenantHref("/admin", selectedTenant.tenant)}>
-              <ArrowLeft aria-hidden="true" />
-              voltar
-            </Link>
-          </Button>
+          <div className="flex items-start justify-between gap-4">
+            <AamemLogo priority className="h-auto w-28" />
+            <LogoutButton />
+          </div>
+          <div>
+            <Button asChild variant="ghost" className="h-9 px-0">
+              <Link href={adminTenantHref("/admin", selectedTenant.tenant)}>
+                <ArrowLeft aria-hidden="true" />
+                voltar
+              </Link>
+            </Button>
+          </div>
           <div className="space-y-2">
             <Badge variant="secondary" className="h-6 rounded-lg">
               dados pessoais
@@ -52,6 +68,14 @@ export default async function AdminProfilePage({
             </p>
           </div>
         </header>
+
+        <AdminTenantSelector
+          currentPath="/admin/dados"
+          tenants={tenants}
+          selectedTenant={selectedTenant}
+          selectedTenantOwner={selectedTenantOwner}
+          canAccessAllTenants={canAccessAllTenants}
+        />
 
         <Card>
           <CardHeader>

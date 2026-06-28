@@ -50,6 +50,16 @@ export const HomeComCta: Story = {
   ),
 };
 
+export const HomeComUsuarioLogado: Story = {
+  render: () => (
+    <HomeCreateTemplate
+      slug="igreja-da-graca"
+      slugStatus="available"
+      currentUserName="Ana Souza"
+    />
+  ),
+};
+
 export const HomeVerificandoSlug: Story = {
   render: () => (
     <HomeCreateTemplate slug="igreja-da-graca" slugStatus="checking" />

@@ -2,6 +2,7 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth/session";
+import { isSuperAdmin } from "@/lib/admin/context";
 import { publishTenantPages, TenantError } from "@/lib/tenants/data";
 import { tenantPathTag, tenantTag } from "@/lib/tenants/cache-tags";
 import { normalizeTenantSlug } from "@/lib/tenants/paths";
@@ -21,7 +22,11 @@ export async function POST(_request: Request, { params }: PublishRouteContext) {
   const tenant = normalizeTenantSlug(rawTenant);
 
   try {
-    await publishTenantPages({ tenant, ownerUid: user.uid });
+    await publishTenantPages({
+      tenant,
+      ownerUid: user.uid,
+      canAccessAllTenants: isSuperAdmin(user),
+    });
 
     revalidateTag(tenantTag(tenant), "max");
     for (const path of ["/", "/pedido-de-oracao"]) {

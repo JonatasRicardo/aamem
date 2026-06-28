@@ -179,6 +179,7 @@ export function AdminMinisiteFlow({
           theme,
         };
         setHasPendingPublish(false);
+        router.replace(`/admin?tenant=${encodeURIComponent(slug)}`);
         router.refresh();
       }
     } catch {

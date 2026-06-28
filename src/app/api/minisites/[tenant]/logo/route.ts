@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { getAdminStorage } from "@/lib/firebase/admin";
 import { getCurrentUser } from "@/lib/auth/session";
+import { isSuperAdmin } from "@/lib/admin/context";
 import { getTenantConfig, saveTenantLogo, TenantError } from "@/lib/tenants/data";
 import { tenantTag } from "@/lib/tenants/cache-tags";
 import { normalizeTenantSlug } from "@/lib/tenants/paths";
@@ -61,6 +62,7 @@ export async function POST(request: Request, { params }: LogoRouteContext) {
     const logoPath = await saveTenantLogo({
       tenant,
       ownerUid: user.uid,
+      canAccessAllTenants: isSuperAdmin(user),
       file,
     });
 

@@ -1,9 +1,20 @@
 import Link from "next/link";
-import { ArrowRight, HandHeart, Link as LinkIcon, UserRound } from "lucide-react";
+import {
+  ArrowRight,
+  ExternalLink,
+  HandHeart,
+  Link as LinkIcon,
+  UserRound,
+} from "lucide-react";
 
 import { AamemLogo } from "@/components/brand/aamem-logo";
-import { AdminPrayerQrCode } from "@/components/templates/admin-home-actions";
+import {
+  AdminPrayerQrCode,
+  LogoutButton,
+} from "@/components/templates/admin-home-actions";
+import { AdminTenantSelector } from "@/components/templates/admin-tenant-selector";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   adminTenantHref,
@@ -19,26 +30,37 @@ type AdminPageProps = {
 };
 
 export default async function AdminPage({ searchParams }: AdminPageProps) {
-  const { user, selectedTenant, displayName, displayEmail } =
-    await getAdminContext(searchParams);
+  const {
+    user,
+    tenants,
+    selectedTenant,
+    selectedTenantOwner,
+    canAccessAllTenants,
+    displayName,
+    displayEmail,
+  } = await getAdminContext(searchParams);
   const prayerRequests = await listOwnerPrayerRequests({
     tenant: selectedTenant.tenant,
     ownerUid: user.uid,
+    canAccessAllTenants,
   });
   const latestPrayerRequest = prayerRequests[0];
   const randomGreeting = getRandomAdminGreeting();
 
   const summaryCards = [
     {
-      title: "Dados pessoais",
-      description: "Nome, e-mail da conta e opção de exclusão.",
-      href: adminTenantHref("/admin/dados", selectedTenant.tenant),
-      icon: UserRound,
+      title: "Link da bio",
+      description: "Admin do minisite, tema, logo e publicação.",
+      href: adminTenantHref("/admin/link-da-bio", selectedTenant.tenant),
+      icon: LinkIcon,
       stats: [
-        { label: "Nome", value: displayName },
-        { label: "E-mail", value: displayEmail },
+        { label: "Instituição", value: selectedTenant.institutionName },
+        {
+          label: "Status",
+          value: selectedTenant.status === "published" ? "publicado" : "rascunho",
+        },
       ],
-      cta: "entrar nos dados",
+      cta: "editar site",
     },
     {
       title: "Pedidos de oração",
@@ -60,21 +82,18 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
             : "nenhum ainda",
         },
       ],
-      cta: "entrar nos pedidos",
+      cta: "ver pedidos",
     },
     {
-      title: "Link da bio",
-      description: "Admin do minisite, tema, logo e publicação.",
-      href: adminTenantHref("/admin/link-da-bio", selectedTenant.tenant),
-      icon: LinkIcon,
+      title: "Dados pessoais",
+      description: "Nome, e-mail da conta e opção de exclusão.",
+      href: adminTenantHref("/admin/dados", selectedTenant.tenant),
+      icon: UserRound,
       stats: [
-        { label: "Instituição", value: selectedTenant.institutionName },
-        {
-          label: "Status",
-          value: selectedTenant.status === "published" ? "publicado" : "rascunho",
-        },
+        { label: "Nome", value: displayName },
+        { label: "E-mail", value: displayEmail },
       ],
-      cta: "entrar no minisite",
+      cta: "acessar dados",
     },
   ];
 
@@ -82,7 +101,10 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     <main className="min-h-svh bg-background px-5 py-7 text-foreground">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-7">
         <header className="space-y-5">
-          <AamemLogo priority className="h-auto w-28" />
+          <div className="flex items-start justify-between gap-4">
+            <AamemLogo priority className="h-auto w-28" />
+            <LogoutButton />
+          </div>
           <div className="space-y-2">
             <Badge variant="secondary" className="h-6 rounded-lg">
               admin
@@ -96,9 +118,113 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
           </div>
         </header>
 
+        <AdminTenantSelector
+          currentPath="/admin"
+          tenants={tenants}
+          selectedTenant={selectedTenant}
+          selectedTenantOwner={selectedTenantOwner}
+          canAccessAllTenants={canAccessAllTenants}
+        />
+
         <section className="grid gap-4 lg:grid-cols-3" aria-label="Áreas do admin">
           {summaryCards.map((card) => {
             const Icon = card.icon;
+            const isPrayerRequestsCard = card.title === "Pedidos de oração";
+            const isBioLinkCard = card.title === "Link da bio";
+
+            if (isPrayerRequestsCard) {
+              return (
+                <Card key={card.title} className="h-full">
+                  <CardHeader>
+                    <div className="mb-3 flex items-start justify-between gap-3">
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-secondary text-brand-indigo">
+                        <Icon className="size-5" aria-hidden="true" />
+                      </div>
+                      <AdminPrayerQrCode
+                        className="min-w-0 flex-1"
+                        institutionName={selectedTenant.institutionName}
+                        prayerRequestPath={`/${selectedTenant.tenant}/pedido-de-oracao`}
+                      />
+                    </div>
+                    <CardTitle>{card.title}</CardTitle>
+                    <CardDescription>{card.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex flex-1 flex-col justify-between gap-5">
+                    <dl className="grid gap-3 text-sm">
+                      {card.stats.map((stat) => (
+                        <div
+                          key={stat.label}
+                          className="flex items-start justify-between gap-4"
+                        >
+                          <dt className="text-muted-foreground">{stat.label}</dt>
+                          <dd className="max-w-[12rem] truncate text-right text-brand-cocoa">
+                            {stat.value}
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
+                    <Link
+                      href={card.href}
+                      className="inline-flex items-center gap-1.5 text-sm text-brand-indigo outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                    >
+                      {card.cta}
+                      <ArrowRight className="size-4" aria-hidden="true" />
+                    </Link>
+                  </CardContent>
+                </Card>
+              );
+            }
+
+            if (isBioLinkCard) {
+              return (
+                <Card key={card.title} className="h-full">
+                  <CardHeader>
+                    <div className="mb-3 flex items-start justify-between gap-3">
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-secondary text-brand-indigo">
+                        <Icon className="size-5" aria-hidden="true" />
+                      </div>
+                      <Button
+                        asChild
+                        variant="outline"
+                        className="h-9 min-w-0 bg-background/95 px-2 shadow-sm sm:px-2.5"
+                      >
+                        <Link
+                          href={`/${selectedTenant.tenant}`}
+                          aria-label={`Acessar site de ${selectedTenant.institutionName}`}
+                        >
+                          <ExternalLink aria-hidden="true" />
+                          acessar site
+                        </Link>
+                      </Button>
+                    </div>
+                    <CardTitle>{card.title}</CardTitle>
+                    <CardDescription>{card.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex flex-1 flex-col justify-between gap-5">
+                    <dl className="grid gap-3 text-sm">
+                      {card.stats.map((stat) => (
+                        <div
+                          key={stat.label}
+                          className="flex items-start justify-between gap-4"
+                        >
+                          <dt className="text-muted-foreground">{stat.label}</dt>
+                          <dd className="max-w-[12rem] truncate text-right text-brand-cocoa">
+                            {stat.value}
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
+                    <Link
+                      href={card.href}
+                      className="inline-flex items-center gap-1.5 text-sm text-brand-indigo outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                    >
+                      {card.cta}
+                      <ArrowRight className="size-4" aria-hidden="true" />
+                    </Link>
+                  </CardContent>
+                </Card>
+              );
+            }
 
             return (
               <Link
@@ -138,11 +264,6 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
             );
           })}
         </section>
-
-        <AdminPrayerQrCode
-          institutionName={selectedTenant.institutionName}
-          prayerRequestPath={`/${selectedTenant.tenant}/pedido-de-oracao`}
-        />
       </div>
     </main>
   );

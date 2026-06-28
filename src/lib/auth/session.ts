@@ -10,6 +10,7 @@ const SESSION_DURATION_MS = 1000 * 60 * 60 * 24 * 5;
 export type AuthenticatedUser = {
   uid: string;
   email?: string;
+  emailVerified?: boolean;
   name?: string;
   picture?: string;
 };
@@ -34,6 +35,7 @@ export async function getCurrentUser(): Promise<AuthenticatedUser | null> {
     return {
       uid: decoded.uid,
       email: decoded.email,
+      emailVerified: decoded.email_verified,
       name: decoded.name,
       picture: decoded.picture,
     };

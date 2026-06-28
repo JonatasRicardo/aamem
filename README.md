@@ -154,6 +154,12 @@ FIREBASE_PRIVATE_KEY=
 FIREBASE_STORAGE_BUCKET=
 ```
 
+Admin access:
+
+```bash
+SUPERADMIN_EMAIL=
+```
+
 Alternatively, the server can use:
 
 ```bash

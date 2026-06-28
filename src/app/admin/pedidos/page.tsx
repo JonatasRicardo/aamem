@@ -2,7 +2,11 @@ import Link from "next/link";
 import { ArrowLeft, HandHeart } from "lucide-react";
 
 import { AamemLogo } from "@/components/brand/aamem-logo";
-import { PrintPrayerRequestsButton } from "@/components/templates/admin-home-actions";
+import {
+  LogoutButton,
+  PrintPrayerRequestsButton,
+} from "@/components/templates/admin-home-actions";
+import { AdminTenantSelector } from "@/components/templates/admin-tenant-selector";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,23 +32,35 @@ type AdminPrayerRequestsPageProps = {
 export default async function AdminPrayerRequestsPage({
   searchParams,
 }: AdminPrayerRequestsPageProps) {
-  const { user, selectedTenant } = await getAdminContext(searchParams);
+  const {
+    user,
+    tenants,
+    selectedTenant,
+    selectedTenantOwner,
+    canAccessAllTenants,
+  } = await getAdminContext(searchParams);
   const prayerRequests = await listOwnerPrayerRequests({
     tenant: selectedTenant.tenant,
     ownerUid: user.uid,
+    canAccessAllTenants,
   });
 
   return (
     <main className="min-h-svh bg-background px-5 py-7 text-foreground">
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
         <header className="admin-print-hidden space-y-5">
-          <AamemLogo priority className="h-auto w-28" />
-          <Button asChild variant="ghost" className="h-9 px-0">
-            <Link href={adminTenantHref("/admin", selectedTenant.tenant)}>
-              <ArrowLeft aria-hidden="true" />
-              voltar
-            </Link>
-          </Button>
+          <div className="flex items-start justify-between gap-4">
+            <AamemLogo priority className="h-auto w-28" />
+            <LogoutButton />
+          </div>
+          <div>
+            <Button asChild variant="ghost" className="h-9 px-0">
+              <Link href={adminTenantHref("/admin", selectedTenant.tenant)}>
+                <ArrowLeft aria-hidden="true" />
+                voltar
+              </Link>
+            </Button>
+          </div>
           <div className="space-y-2">
             <Badge variant="secondary" className="h-6 rounded-lg">
               pedidos de oração
@@ -57,6 +73,16 @@ export default async function AdminPrayerRequestsPage({
             </p>
           </div>
         </header>
+
+        <div className="admin-print-hidden">
+          <AdminTenantSelector
+            currentPath="/admin/pedidos"
+            tenants={tenants}
+            selectedTenant={selectedTenant}
+            selectedTenantOwner={selectedTenantOwner}
+            canAccessAllTenants={canAccessAllTenants}
+          />
+        </div>
 
         <Card className="admin-print-section">
           <CardHeader>
