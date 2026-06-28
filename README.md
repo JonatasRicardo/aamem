@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="public/brand/aamem-logo.png" alt="aamem" width="180" />
+</p>
+
 # aamem
 
 aamem is a minisite builder for churches and faith communities. The product lets a church create a simple public bio page, publish a prayer request form, collect requests from visitors, and manage everything from a private admin area.
