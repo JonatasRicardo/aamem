@@ -40,6 +40,17 @@ export type PublishedBuildPage = {
   path: string;
 };
 
+export type PrayerRequest = {
+  id: string;
+  message: string;
+  status: string;
+  wantsContact: boolean;
+  contactName?: string;
+  contactWhatsapp?: string;
+  createdAt?: Date;
+  contactUpdatedAt?: Date;
+};
+
 export class TenantError extends Error {
   constructor(
     message: string,
@@ -100,6 +111,33 @@ function pageFromSnapshot(
     createdAt: timestampToDate(data.createdAt),
     updatedAt: timestampToDate(data.updatedAt),
     publishedAt: timestampToDate(data.publishedAt),
+  };
+}
+
+function prayerRequestFromSnapshot(
+  snapshot: FirebaseFirestore.QueryDocumentSnapshot | FirebaseFirestore.DocumentSnapshot
+): PrayerRequest | null {
+  if (!snapshot.exists) {
+    return null;
+  }
+
+  const data = snapshot.data() ?? {};
+
+  return {
+    id: snapshot.id,
+    message: String(data.message ?? ""),
+    status: String(data.status ?? "new"),
+    wantsContact: Boolean(data.wantsContact),
+    contactName:
+      typeof data.contactName === "string" && data.contactName
+        ? data.contactName
+        : undefined,
+    contactWhatsapp:
+      typeof data.contactWhatsapp === "string" && data.contactWhatsapp
+        ? data.contactWhatsapp
+        : undefined,
+    createdAt: timestampToDate(data.createdAt),
+    contactUpdatedAt: timestampToDate(data.contactUpdatedAt),
   };
 }
 
@@ -260,6 +298,51 @@ export async function listOwnerTenants(ownerUid: string) {
     .sort(
       (a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0)
     );
+}
+
+export async function listOwnerPrayerRequests({
+  tenant,
+  ownerUid,
+}: {
+  tenant: string;
+  ownerUid: string;
+}) {
+  await getOwnerTenant(tenant, ownerUid);
+
+  const snapshot = await getAdminDb()
+    .collection("tenants")
+    .doc(tenant)
+    .collection("prayerRequests")
+    .orderBy("createdAt", "desc")
+    .get();
+
+  return snapshot.docs
+    .map((doc) => prayerRequestFromSnapshot(doc))
+    .filter((request): request is PrayerRequest => Boolean(request));
+}
+
+export async function deleteOwnerTenants(ownerUid: string) {
+  const db = getAdminDb();
+  const snapshot = await db
+    .collection("tenants")
+    .where("ownerUid", "==", ownerUid)
+    .get();
+  const logoPaths = snapshot.docs
+    .map((doc) => doc.data().logoPath)
+    .filter((logoPath): logoPath is string => typeof logoPath === "string");
+  const tenants = snapshot.docs.map((doc) => doc.id);
+
+  for (const doc of snapshot.docs) {
+    await db.recursiveDelete(doc.ref);
+  }
+
+  const bucket = getAdminStorage().bucket();
+
+  await Promise.all(
+    logoPaths.map((logoPath) => bucket.file(logoPath).delete().catch(() => null))
+  );
+
+  return tenants;
 }
 
 export async function getOwnerTenant(tenant: string, ownerUid: string) {

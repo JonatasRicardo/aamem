@@ -9,7 +9,10 @@ import {
   type SlugStatus,
 } from "@/components/templates/create-your-own-flow";
 import { signInWithGoogle } from "@/lib/firebase/client";
-import { isValidTenantSlug, normalizeTenantSlug } from "@/lib/tenants/paths";
+import {
+  isValidTenantSlug,
+  normalizeTenantSlugInput,
+} from "@/lib/tenants/paths";
 
 type MinisiteResponse = {
   redirectTo?: string;
@@ -18,22 +21,22 @@ type MinisiteResponse = {
 
 export function CreateYourOwnHomeFlow() {
   const router = useRouter();
-  const [rawSlug, setRawSlug] = useState("igreja-da-graca");
+  const [rawSlug, setRawSlug] = useState("");
   const [slugStatus, setSlugStatus] = useState<SlugStatus>("checking");
   const [authDialogState, setAuthDialogState] =
     useState<AuthDialogState>("closed");
   const [isPending, startTransition] = useTransition();
 
-  const slug = useMemo(() => normalizeTenantSlug(rawSlug), [rawSlug]);
+  const slugInput = useMemo(() => normalizeTenantSlugInput(rawSlug), [rawSlug]);
   const displaySlugStatus: SlugStatus =
-    !slug || slug.length < 3
+    !slugInput || slugInput.length < 3
       ? "idle"
-      : !isValidTenantSlug(slug)
+      : !isValidTenantSlug(slugInput)
         ? "unavailable"
         : slugStatus;
 
   useEffect(() => {
-    if (!slug || slug.length < 3 || !isValidTenantSlug(slug)) {
+    if (!slugInput || slugInput.length < 3 || !isValidTenantSlug(slugInput)) {
       return;
     }
 
@@ -42,7 +45,7 @@ export function CreateYourOwnHomeFlow() {
       setSlugStatus("checking");
 
       try {
-        const response = await fetch(`/api/slugs/${slug}`, {
+        const response = await fetch(`/api/slugs/${slugInput}`, {
           signal: controller.signal,
         });
         const payload = (await response.json()) as {
@@ -61,7 +64,7 @@ export function CreateYourOwnHomeFlow() {
       controller.abort();
       window.clearTimeout(timeout);
     };
-  }, [slug]);
+  }, [slugInput]);
 
   function handleCreate() {
     if (displaySlugStatus !== "available") {
@@ -89,7 +92,7 @@ export function CreateYourOwnHomeFlow() {
       const minisiteResponse = await fetch("/api/minisites", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ tenant: slug }),
+        body: JSON.stringify({ tenant: slugInput }),
       });
       const payload = (await minisiteResponse.json()) as MinisiteResponse;
 
@@ -108,7 +111,7 @@ export function CreateYourOwnHomeFlow() {
 
   return (
     <HomeCreateTemplate
-      slug={slug}
+      slug={slugInput}
       slugStatus={displaySlugStatus}
       authDialogState={authDialogState}
       ctaState={isPending ? "loading" : "idle"}

@@ -37,7 +37,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       tenant,
-      redirectTo: `/admin?tenant=${tenant}`,
+      redirectTo: `/admin/link-da-bio?tenant=${tenant}`,
     });
   } catch (error) {
     if (error instanceof TenantError && error.code === "tenant-taken") {

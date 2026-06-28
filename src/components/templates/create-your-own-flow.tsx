@@ -43,6 +43,11 @@ export type HomeCreateTemplateProps = {
 
 export type CreateInstitutionTemplateProps = {
   className?: string;
+  embedded?: boolean;
+  quickEdit?: boolean;
+  submitDisabled?: boolean;
+  submitActionContainerClassName?: string;
+  submitLoadingLabel?: string;
   institutionName?: string;
   personName?: string;
   email?: string;
@@ -116,7 +121,7 @@ const SUBMIT_STATUS_CONTENT: Partial<
   Record<SubmitStatus, { text: string; role: "status" | "alert" }>
 > = {
   success: {
-    text: "Conta criada. O minisite está pronto para publicar.",
+    text: "Minisite publicado com sucesso.",
     role: "status",
   },
   error: {
@@ -446,6 +451,7 @@ export function HomeCreateTemplate({
                 required
                 className="h-12 min-w-0 flex-1 bg-transparent px-3 font-mono text-base outline-none"
                 aria-describedby="home-slug-feedback"
+                placeholder="igreja-da-graca"
               />
             </div>
             <div id="home-slug-feedback">
@@ -533,6 +539,11 @@ export function HomeCreateTemplate({
 
 export function CreateInstitutionTemplate({
   className,
+  embedded = false,
+  quickEdit = false,
+  submitDisabled = false,
+  submitActionContainerClassName,
+  submitLoadingLabel = "criando minisite",
   institutionName = "Igreja da Graça",
   personName = "Ana Souza",
   email = "ana@igreja.com",
@@ -553,150 +564,179 @@ export function CreateInstitutionTemplate({
 }: CreateInstitutionTemplateProps) {
   const isLoading = submitStatus === "loading";
   const submitFeedback = SUBMIT_STATUS_CONTENT[submitStatus];
+  const Shell = embedded ? "section" : "main";
+  const hasSubmitAction = Boolean(onSubmit);
+  const defaultSubmitActionContainerClassName = embedded
+    ? "mx-auto mt-6 max-w-md"
+    : "fixed inset-x-0 bottom-0 border-t border-border bg-background/95 px-5 py-4 shadow-[0_-12px_40px_rgb(43_29_29/0.08)] backdrop-blur";
+
+  const themeControls = (
+    <section aria-label="Temas do minisite" className="space-y-3">
+      <div className="flex items-center gap-2 text-brand-cocoa">
+        <Palette className="size-4" aria-hidden="true" />
+        <h2 className="text-base leading-tight">Tema do minisite</h2>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        {(Object.keys(MINISITE_THEME_CONTENT) as MinisiteTheme[]).map(
+          (themeOption) => {
+            const themeContent = MINISITE_THEME_CONTENT[themeOption];
+            const isSelected = themeOption === theme;
+
+            return (
+              <Button
+                key={themeOption}
+                type="button"
+                variant={isSelected ? "default" : "outline"}
+                className="h-11 justify-start"
+                aria-pressed={isSelected}
+                onClick={() => onThemeChange?.(themeOption)}
+              >
+                <span
+                  className={cn(
+                    "size-4 rounded-full border border-border",
+                    themeContent.swatchClassName
+                  )}
+                  aria-hidden="true"
+                />
+                {themeContent.label}
+              </Button>
+            );
+          }
+        )}
+      </div>
+    </section>
+  );
+
+  const confirmedData = (
+    <section
+      aria-label="Dados confirmados"
+      className="rounded-lg border border-border bg-white/70 p-3"
+    >
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <h2 className="text-sm text-brand-cocoa">Dados confirmados</h2>
+        <Badge variant="outline" className="h-6 rounded-lg">
+          conta segura
+        </Badge>
+      </div>
+      <dl className="space-y-2 text-sm">
+        <div className="flex items-center justify-between gap-3">
+          <dt className="text-muted-foreground">Pessoa</dt>
+          <dd className="truncate text-right text-brand-cocoa">{personName}</dd>
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <dt className="text-muted-foreground">E-mail</dt>
+          <dd className="truncate text-right text-brand-cocoa">{email}</dd>
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <dt className="text-muted-foreground">Link</dt>
+          <dd className="truncate text-right font-mono text-xs text-brand-cocoa">
+            aamem.com/{slug}
+          </dd>
+        </div>
+      </dl>
+    </section>
+  );
+
+  const phoneMockup = (
+    <MinisitePhoneMockup
+      institutionName={institutionName}
+      description={description}
+      slug={slug}
+      logoPreviewUrl={logoPreviewUrl}
+      theme={theme}
+      editableField={editableField}
+      onEditableFieldChange={onEditableFieldChange}
+      onInstitutionNameChange={onInstitutionNameChange}
+      onDescriptionChange={onDescriptionChange}
+      onFieldEditEnd={onFieldEditEnd}
+      onLogoChange={onLogoChange}
+    />
+  );
 
   return (
-    <main
+    <Shell
+      aria-label={embedded ? "Editor do minisite" : undefined}
       className={cn(
-        "min-h-svh bg-background px-5 pb-28 pt-7 text-foreground",
+        embedded
+          ? "bg-transparent px-0 py-0 text-foreground"
+          : "min-h-svh bg-background px-5 pb-28 pt-7 text-foreground",
         className
       )}
     >
-      <section className="mx-auto flex w-full max-w-md flex-col gap-6">
-        <header className="space-y-4">
-          <div className="flex items-center justify-between gap-4">
-            <AamemLogo priority className="h-auto w-28" />
-            <Badge variant="secondary" className="h-6 rounded-lg px-2">
-              autenticado
-            </Badge>
-          </div>
-          <div className="space-y-2">
-            <h1 className="text-3xl leading-tight text-brand-cocoa">
-              Monte o minisite
-            </h1>
-            <p className="text-base leading-7 text-brand-lavender">
-              O login e o link já estão prontos. Agora ajuste o que aparece no
-              celular.
-            </p>
-          </div>
-        </header>
-
-        <section aria-label="Temas do minisite" className="space-y-3">
-          <div className="flex items-center gap-2 text-brand-cocoa">
-            <Palette className="size-4" aria-hidden="true" />
-            <h2 className="text-base leading-tight">Tema do minisite</h2>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            {(Object.keys(MINISITE_THEME_CONTENT) as MinisiteTheme[]).map(
-              (themeOption) => {
-                const themeContent = MINISITE_THEME_CONTENT[themeOption];
-                const isSelected = themeOption === theme;
-
-                return (
-                  <Button
-                    key={themeOption}
-                    type="button"
-                    variant={isSelected ? "default" : "outline"}
-                    className="h-11 justify-start"
-                    aria-pressed={isSelected}
-                    onClick={() => onThemeChange?.(themeOption)}
-                  >
-                    <span
-                      className={cn(
-                        "size-4 rounded-full border border-border",
-                        themeContent.swatchClassName
-                      )}
-                      aria-hidden="true"
-                    />
-                    {themeContent.label}
-                  </Button>
-                );
-              }
-            )}
-          </div>
-        </section>
-
-        <section
-          aria-label="Dados confirmados"
-          className="rounded-lg border border-border bg-white/70 p-3"
-        >
-          <div className="mb-2 flex items-center justify-between gap-3">
-            <h2 className="text-sm text-brand-cocoa">Dados confirmados</h2>
-            <Badge variant="outline" className="h-6 rounded-lg">
-              conta segura
-            </Badge>
-          </div>
-          <dl className="space-y-2 text-sm">
-            <div className="flex items-center justify-between gap-3">
-              <dt className="text-muted-foreground">Pessoa</dt>
-              <dd className="truncate text-right text-brand-cocoa">{personName}</dd>
+      <section
+        className={cn(
+          "mx-auto flex w-full flex-col",
+          quickEdit ? "max-w-md gap-5" : "max-w-md gap-6"
+        )}
+      >
+        {!quickEdit ? (
+          <header className="space-y-4">
+            <div className="flex items-center justify-between gap-4">
+              <AamemLogo priority className="h-auto w-28" />
+              <Badge variant="secondary" className="h-6 rounded-lg px-2">
+                autenticado
+              </Badge>
             </div>
-            <div className="flex items-center justify-between gap-3">
-              <dt className="text-muted-foreground">E-mail</dt>
-              <dd className="truncate text-right text-brand-cocoa">{email}</dd>
+            <div className="space-y-2">
+              <h1 className="text-3xl leading-tight text-brand-cocoa">
+                Monte o minisite
+              </h1>
+              <p className="text-base leading-7 text-brand-lavender">
+                O login e o link já estão prontos. Agora ajuste o que aparece no
+                celular.
+              </p>
             </div>
-            <div className="flex items-center justify-between gap-3">
-              <dt className="text-muted-foreground">Link</dt>
-              <dd className="truncate text-right font-mono text-xs text-brand-cocoa">
-                aamem.com/{slug}
-              </dd>
-            </div>
-          </dl>
-        </section>
+          </header>
+        ) : null}
 
-        <MinisitePhoneMockup
-          institutionName={institutionName}
-          description={description}
-          slug={slug}
-          logoPreviewUrl={logoPreviewUrl}
-          theme={theme}
-          editableField={editableField}
-          onEditableFieldChange={onEditableFieldChange}
-          onInstitutionNameChange={onInstitutionNameChange}
-          onDescriptionChange={onDescriptionChange}
-          onFieldEditEnd={onFieldEditEnd}
-          onLogoChange={onLogoChange}
-        />
+        {quickEdit ? phoneMockup : themeControls}
+        {quickEdit ? themeControls : confirmedData}
+        {quickEdit ? null : phoneMockup}
       </section>
 
-      {submitFeedback ? (
-        <div className="fixed inset-x-0 bottom-20 px-5">
-          <div
-            className={cn(
-              "mx-auto max-w-md rounded-lg border bg-background px-4 py-3 text-sm shadow-lg",
-              submitStatus === "error"
-                ? "border-destructive/30 text-destructive"
-                : "border-brand-rose/30 text-brand-cocoa"
-            )}
-            role={submitFeedback.role}
-          >
-            {submitFeedback.text}
+      {hasSubmitAction ? (
+        <div
+          className={
+            submitActionContainerClassName ??
+            defaultSubmitActionContainerClassName
+          }
+        >
+          <div className="mx-auto max-w-md space-y-3">
+            {submitFeedback ? (
+              <div
+                className={cn(
+                  "rounded-lg border bg-background px-4 py-3 text-sm shadow-sm",
+                  submitStatus === "error"
+                    ? "border-destructive/30 text-destructive"
+                    : "border-brand-rose/30 text-brand-cocoa"
+                )}
+                role={submitFeedback.role}
+              >
+                {submitFeedback.text}
+              </div>
+            ) : null}
+            <Button
+              type="button"
+              className="h-12 w-full"
+              disabled={isLoading || submitDisabled}
+              onClick={onSubmit}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="animate-spin" aria-hidden="true" />
+                  {submitLoadingLabel}
+                </>
+              ) : (
+                <>
+                  {submitLabel}
+                  <ArrowRight aria-hidden="true" />
+                </>
+              )}
+            </Button>
           </div>
         </div>
       ) : null}
-
-      <div className="fixed inset-x-0 bottom-0 border-t border-border bg-background/95 px-5 py-4 shadow-[0_-12px_40px_rgb(43_29_29/0.08)] backdrop-blur">
-        <div className="mx-auto max-w-md">
-          <Button
-            type="button"
-            className="h-12 w-full"
-            disabled={isLoading}
-            onClick={onSubmit}
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="animate-spin" aria-hidden="true" />
-                criando minisite
-              </>
-            ) : (
-              <>
-                {submitLabel}
-                <ArrowRight aria-hidden="true" />
-              </>
-            )}
-          </Button>
-        </div>
-      </div>
-    </main>
+    </Shell>
   );
 }
 

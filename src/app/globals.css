@@ -139,3 +139,15 @@
     @apply font-sans;
   }
 }
+
+@media print {
+  .admin-print-hidden {
+    display: none !important;
+  }
+
+  .admin-print-section {
+    border: 0 !important;
+    box-shadow: none !important;
+    break-inside: auto;
+  }
+}

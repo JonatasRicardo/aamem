@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   isValidTenantSlug,
   normalizeTenantSlug,
+  normalizeTenantSlugInput,
   pathToSlugSegments,
   slugSegmentsToPath,
 } from "./paths";
@@ -12,6 +13,11 @@ describe("tenant paths", () => {
   it("normalizes tenant slugs", () => {
     expect(normalizeTenantSlug(" Igreja da Graça! ")).toBe("igreja-da-graca");
     expect(normalizeTenantSlug("AAMEM___Central")).toBe("aamem-central");
+  });
+
+  it("preserves a trailing hyphen while editing tenant slugs", () => {
+    expect(normalizeTenantSlugInput("Minha-")).toBe("minha-");
+    expect(normalizeTenantSlug("Minha-")).toBe("minha");
   });
 
   it("rejects invalid and reserved tenant slugs", () => {

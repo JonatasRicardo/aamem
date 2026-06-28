@@ -11,6 +11,10 @@ import {
 } from "@/components/templates/create-your-own-flow";
 
 type AdminMinisiteFlowProps = {
+  className?: string;
+  embedded?: boolean;
+  quickEdit?: boolean;
+  submitActionContainerClassName?: string;
   institutionName: string;
   personName: string;
   email: string;
@@ -22,6 +26,10 @@ type AdminMinisiteFlowProps = {
 };
 
 export function AdminMinisiteFlow({
+  className,
+  embedded = false,
+  quickEdit = false,
+  submitActionContainerClassName,
   institutionName,
   personName,
   email,
@@ -39,10 +47,14 @@ export function AdminMinisiteFlow({
   const [editingField, setEditingField] =
     useState<EditableMinisiteField | null>(null);
   const [theme, setTheme] = useState(initialTheme);
-  const [status, setStatus] = useState<SubmitStatus>(
-    isPublished ? "success" : "idle"
-  );
+  const [status, setStatus] = useState<SubmitStatus>("idle");
+  const [hasPendingPublish, setHasPendingPublish] = useState(false);
   const localLogoUrlRef = useRef<string | null>(null);
+  const publishedSnapshotRef = useRef({
+    institutionName,
+    description,
+    theme: initialTheme,
+  });
 
   useEffect(() => {
     return () => {
@@ -72,10 +84,19 @@ export function AdminMinisiteFlow({
     setEditingField(null);
 
     try {
+      const hasPublishedTextChanges =
+        institutionNameValue !== publishedSnapshotRef.current.institutionName ||
+        descriptionValue !== publishedSnapshotRef.current.description;
+
       await saveDraft({
         institutionName: institutionNameValue,
         description: descriptionValue,
       });
+
+      if (isPublished && hasPublishedTextChanges) {
+        setHasPendingPublish(true);
+      }
+
       router.refresh();
     } catch {
       setStatus("error");
@@ -83,8 +104,18 @@ export function AdminMinisiteFlow({
   }
 
   function handleThemeChange(nextTheme: MinisiteTheme) {
+    if (nextTheme === theme) {
+      return;
+    }
+
     setTheme(nextTheme);
-    void saveDraft({ themeId: nextTheme }).catch(() => setStatus("error"));
+    void saveDraft({ themeId: nextTheme })
+      .then(() => {
+        if (isPublished && nextTheme !== publishedSnapshotRef.current.theme) {
+          setHasPendingPublish(true);
+        }
+      })
+      .catch(() => setStatus("error"));
   }
 
   async function handleLogoChange(file: File) {
@@ -115,6 +146,10 @@ export function AdminMinisiteFlow({
         throw new Error("Nao foi possivel salvar a logo.");
       }
 
+      if (isPublished) {
+        setHasPendingPublish(true);
+      }
+
       router.refresh();
     } catch {
       setStatus("error");
@@ -138,6 +173,12 @@ export function AdminMinisiteFlow({
       setStatus(response.ok ? "success" : "error");
 
       if (response.ok) {
+        publishedSnapshotRef.current = {
+          institutionName: institutionNameValue,
+          description: descriptionValue,
+          theme,
+        };
+        setHasPendingPublish(false);
         router.refresh();
       }
     } catch {
@@ -147,6 +188,11 @@ export function AdminMinisiteFlow({
 
   return (
     <CreateInstitutionTemplate
+      className={className}
+      embedded={embedded}
+      quickEdit={quickEdit}
+      submitDisabled={isPublished && !hasPendingPublish}
+      submitActionContainerClassName={submitActionContainerClassName}
       institutionName={institutionNameValue}
       personName={personName}
       email={email}
@@ -155,7 +201,8 @@ export function AdminMinisiteFlow({
       logoPreviewUrl={logoPreviewUrl}
       theme={theme}
       submitStatus={status}
-      submitLabel={isPublished ? "minisite publicado" : "publicar minisite"}
+      submitLabel={isPublished ? "publicar alterações" : "publicar minisite"}
+      submitLoadingLabel="publicando"
       editableField={editingField}
       onEditableFieldChange={setEditingField}
       onInstitutionNameChange={setInstitutionNameValue}
@@ -163,7 +210,7 @@ export function AdminMinisiteFlow({
       onFieldEditEnd={handleFieldEditEnd}
       onLogoChange={handleLogoChange}
       onThemeChange={handleThemeChange}
-      onSubmit={isPublished ? undefined : handlePublish}
+      onSubmit={handlePublish}
     />
   );
 }
