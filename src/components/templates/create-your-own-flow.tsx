@@ -1,5 +1,6 @@
 import {
   ArrowRight,
+  CalendarDays,
   CheckCircle2,
   CircleAlert,
   Clock3,
@@ -8,9 +9,15 @@ import {
   Link as LinkIcon,
   Loader2,
   LogIn,
+  Mail,
+  MapPin,
   Palette,
   Pencil,
+  QrCode,
+  Share2,
+  Smartphone,
   UserRound,
+  Video,
 } from "lucide-react";
 
 import { AamemLogo } from "@/components/brand/aamem-logo";
@@ -166,6 +173,36 @@ const MINISITE_THEME_CONTENT: Record<
     swatchClassName: "bg-brand-indigo",
   },
 };
+
+const HOME_PREVIEW_ACTIONS = [
+  { label: "Como chegar", icon: MapPin },
+  { label: "Culto ao vivo", icon: Video },
+  { label: "Pedidos de oração", icon: HandHeart },
+  { label: "Contato", icon: Mail },
+];
+
+const HOME_FEATURES = [
+  {
+    title: "Agenda de eventos",
+    description: "Divulgue cultos, campanhas e encontros da semana.",
+    icon: CalendarDays,
+  },
+  {
+    title: "Pedido de oração",
+    description: "Receba pedidos com nome, contato e mensagem em um só lugar.",
+    icon: HandHeart,
+  },
+  {
+    title: "Link da bio",
+    description: "Organize endereço, transmissão, contato e redes sociais.",
+    icon: Share2,
+  },
+  {
+    title: "QR Code",
+    description: "Leve o pedido de oração para avisos, telões e impressos.",
+    icon: QrCode,
+  },
+];
 
 function LogoPreview({
   url,
@@ -412,6 +449,75 @@ function SlugFeedback({ status }: { status: SlugStatus }) {
   );
 }
 
+function HomePhonePreview({ slug }: { slug: string }) {
+  return (
+    <section
+      aria-label="Prévia do minisite"
+      className="mx-auto w-full max-w-[330px] lg:max-w-[360px]"
+    >
+      <div className="rounded-[2rem] border border-brand-cocoa/15 bg-brand-cocoa p-2 shadow-2xl shadow-brand-cocoa/20">
+        <div className="min-h-[530px] rounded-[1.55rem] bg-white px-4 py-5">
+          <div className="mx-auto mb-7 h-1.5 w-14 rounded-full bg-brand-cocoa/15" />
+          <div className="flex flex-col items-center text-center">
+            <div className="flex size-20 items-center justify-center rounded-full border border-brand-rose/25 bg-secondary text-brand-indigo shadow-sm">
+              <HandHeart className="size-9" aria-hidden="true" />
+            </div>
+            <div className="mt-4 space-y-2">
+              <h2 className="text-2xl leading-tight text-brand-cocoa">
+                Igreja Nova Aliança
+              </h2>
+              <p className="mx-auto max-w-[240px] text-sm leading-6 text-brand-lavender">
+                Um espaço simples para receber pedidos de oração, compartilhar
+                a agenda e aproximar pessoas.
+              </p>
+              <p className="font-mono text-xs text-muted-foreground">
+                aamem.com/{slug || "sua-igreja"}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-7 grid grid-cols-2 gap-2">
+            {HOME_PREVIEW_ACTIONS.map((action) => {
+              const ActionIcon = action.icon;
+
+              return (
+                <div
+                  key={action.label}
+                  className="flex min-h-20 flex-col items-center justify-center gap-2 rounded-lg border border-brand-rose/20 bg-secondary/70 px-2 text-center text-brand-cocoa"
+                >
+                  <ActionIcon className="size-5 text-brand-indigo" aria-hidden />
+                  <span className="text-xs leading-tight">{action.label}</span>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-7 rounded-lg border border-brand-rose/25 bg-white p-3 shadow-sm">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <p className="font-mono text-[0.7rem] uppercase text-muted-foreground">
+                  próximo evento
+                </p>
+                <h3 className="text-sm leading-tight text-brand-cocoa">
+                  Culto de louvor e adoração
+                </h3>
+              </div>
+              <div className="flex size-12 shrink-0 flex-col items-center justify-center rounded-full border border-brand-indigo/20 text-brand-indigo">
+                <span className="text-xs leading-none">Dom</span>
+                <span className="text-base leading-none">18h</span>
+              </div>
+            </div>
+            <Button type="button" className="h-11 w-full">
+              <HandHeart aria-hidden="true" />
+              Pedido de oração
+            </Button>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function HomeCreateTemplate({
   className,
   ctaState = "idle",
@@ -437,91 +543,163 @@ export function HomeCreateTemplate({
   return (
     <main
       className={cn(
-        "relative flex min-h-svh flex-col items-center justify-center bg-background px-6 py-16 text-foreground",
+        "min-h-svh bg-background text-foreground",
         className
       )}
     >
-      <Button
-        type="button"
-        variant="secondary"
-        className="absolute right-5 top-5 h-9 max-w-[calc(100vw-2.5rem)] rounded-lg px-3 shadow-sm"
-        disabled={isLoginLoading}
-        aria-label={
-          hasCurrentUser
-            ? `Entrar no admin como ${cleanUserName}`
-            : "Entrar com login"
-        }
-        onClick={onLogin}
-      >
-        {isLoginLoading ? (
-          <Loader2 className="animate-spin" aria-hidden="true" />
-        ) : hasCurrentUser ? (
-          <UserRound aria-hidden="true" />
-        ) : (
-          <LogIn aria-hidden="true" />
-        )}
-        <span className="min-w-0 truncate">
-          {isLoginLoading
-            ? hasCurrentUser
-              ? "abrindo admin"
-              : "entrando"
-            : hasCurrentUser
-              ? `Olá, ${displayUserName}`
-              : "entrar"}
-        </span>
-      </Button>
+      <div className="mx-auto flex w-full max-w-7xl flex-col px-5 py-5 sm:px-6 lg:px-8">
+        <header className="flex items-center justify-between gap-4">
+          <AamemLogo priority className="h-auto w-28 sm:w-36" />
+          <Button
+            type="button"
+            variant="secondary"
+            className="h-9 max-w-[52vw] rounded-lg px-3 shadow-sm"
+            disabled={isLoginLoading}
+            aria-label={
+              hasCurrentUser
+                ? `Entrar no admin como ${cleanUserName}`
+                : "Entrar com login"
+            }
+            onClick={onLogin}
+          >
+            {isLoginLoading ? (
+              <Loader2 className="animate-spin" aria-hidden="true" />
+            ) : hasCurrentUser ? (
+              <UserRound aria-hidden="true" />
+            ) : (
+              <LogIn aria-hidden="true" />
+            )}
+            <span className="min-w-0 truncate">
+              {isLoginLoading
+                ? hasCurrentUser
+                  ? "abrindo admin"
+                  : "entrando"
+                : hasCurrentUser
+                  ? `Olá, ${displayUserName}`
+                  : "entrar"}
+            </span>
+          </Button>
+        </header>
 
-      <section className="flex w-full max-w-[420px] flex-col items-center gap-8">
-        <AamemLogo priority className="h-auto w-full max-w-[330px]" />
-        <div className="w-full space-y-5 text-center">
-          <p className="mx-auto max-w-sm text-base leading-7 text-brand-lavender">
-            Crie uma página simples para sua instituição receber pedidos de
-            oração.
-          </p>
-          <div className="space-y-3 text-left">
-            <Label htmlFor="home-slug">Escolha seu link</Label>
-            <div className="flex overflow-hidden rounded-lg border border-input bg-white/80 text-left focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50">
-              <span className="flex h-12 shrink-0 items-center border-r border-border px-3 font-mono text-sm text-muted-foreground">
-                aamem.com/
-              </span>
-              <input
-                id="home-slug"
-                name="slug"
-                value={slug}
-                readOnly={!onSlugChange}
-                onChange={(event) => onSlugChange?.(event.target.value)}
-                required
-                className="h-12 min-w-0 flex-1 bg-transparent px-3 font-mono text-base outline-none"
-                aria-describedby="home-slug-feedback"
-                placeholder="igreja-da-graca"
-              />
+        <section className="grid min-h-[calc(100svh-5rem)] items-center gap-8 py-6 lg:grid-cols-[minmax(0,1fr)_minmax(340px,420px)] lg:gap-16 lg:py-12">
+          <div className="mx-auto w-full max-w-xl space-y-5 text-center lg:mx-0 lg:space-y-7 lg:text-left">
+            <div className="inline-flex items-center gap-2 rounded-full border border-brand-rose/25 bg-secondary px-3 py-1 text-sm text-brand-cocoa">
+              <Smartphone className="size-4 text-brand-indigo" aria-hidden />
+              minisites para igrejas
             </div>
-            <div id="home-slug-feedback">
-              <SlugFeedback status={slugStatus} />
+
+            <div className="space-y-4">
+              <h1 className="text-3xl leading-tight text-brand-cocoa sm:text-5xl lg:text-6xl">
+                Sua igreja fácil de encontrar, acompanhar e cuidar.
+              </h1>
+              <p className="mx-auto max-w-lg text-sm leading-6 text-brand-lavender sm:text-lg sm:leading-7 lg:mx-0">
+                Crie uma página simples para sua instituição receber pedidos de
+                oração, divulgar agenda, indicar rotas, transmissões e contato.
+              </p>
+            </div>
+
+            <section
+              aria-label="Criar minisite"
+              className="space-y-4 rounded-lg border border-brand-rose/25 bg-white/85 p-4 text-left shadow-xl shadow-brand-cocoa/8 sm:p-5"
+            >
+              <div className="space-y-1">
+                <h2 className="text-xl leading-tight text-brand-cocoa">
+                  Comece pelo link
+                </h2>
+                <p className="text-sm leading-6 text-brand-lavender">
+                  Escolha o endereço público do minisite. Depois você ajusta
+                  logo, descrição, tema e funções.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <Label htmlFor="home-slug">Escolha seu link</Label>
+                <div className="flex overflow-hidden rounded-lg border border-input bg-white text-left focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50">
+                  <span className="flex h-12 shrink-0 items-center border-r border-border px-3 font-mono text-sm text-muted-foreground">
+                    aamem.com/
+                  </span>
+                  <input
+                    id="home-slug"
+                    name="slug"
+                    value={slug}
+                    readOnly={!onSlugChange}
+                    onChange={(event) => onSlugChange?.(event.target.value)}
+                    required
+                    className="h-12 min-w-0 flex-1 bg-transparent px-3 font-mono text-base outline-none"
+                    aria-describedby="home-slug-feedback"
+                    placeholder="igreja-da-graca"
+                  />
+                </div>
+                <div id="home-slug-feedback">
+                  <SlugFeedback status={slugStatus} />
+                </div>
+              </div>
+
+              <Button
+                className="h-12 w-full rounded-lg px-4 text-base"
+                disabled={!canCreate}
+                onClick={onCreate}
+                type="button"
+              >
+                {isLoading || isReturning ? (
+                  <>
+                    <Loader2 className="animate-spin" aria-hidden="true" />
+                    {isReturning ? "voltando para o site" : "abrindo"}
+                  </>
+                ) : hasAuthDialog ? (
+                  "login aberto"
+                ) : (
+                  <>
+                    criar conta
+                    <ArrowRight aria-hidden="true" />
+                  </>
+                )}
+              </Button>
+            </section>
+
+            <div className="grid grid-cols-4 gap-2 text-center">
+              {HOME_PREVIEW_ACTIONS.map((action) => {
+                const ActionIcon = action.icon;
+
+                return (
+                <div
+                  key={action.label}
+                  className="flex min-h-18 flex-col items-center justify-center gap-2 rounded-lg border border-border bg-secondary/50 px-2 py-2 text-brand-cocoa"
+                >
+                  <ActionIcon className="size-4 text-brand-indigo" aria-hidden />
+                  <p className="text-[0.7rem] leading-tight">{action.label}</p>
+                </div>
+                );
+              })}
             </div>
           </div>
-          <Button
-            className="h-11 w-full rounded-lg px-4"
-            disabled={!canCreate}
-            onClick={onCreate}
-            type="button"
-          >
-            {isLoading || isReturning ? (
-              <>
-                <Loader2 className="animate-spin" aria-hidden="true" />
-                {isReturning ? "voltando para o site" : "abrindo"}
-              </>
-            ) : hasAuthDialog ? (
-              "login aberto"
-            ) : (
-              <>
-                criar conta
-                <ArrowRight aria-hidden="true" />
-              </>
-            )}
-          </Button>
-        </div>
-      </section>
+
+          <HomePhonePreview slug={slug} />
+        </section>
+
+        <section className="grid gap-3 pb-10 sm:grid-cols-2 lg:grid-cols-4">
+          {HOME_FEATURES.map((feature) => {
+            const FeatureIcon = feature.icon;
+
+            return (
+              <article
+                key={feature.title}
+                className="rounded-lg border border-brand-rose/20 bg-white p-4 shadow-sm"
+              >
+                <div className="mb-4 flex size-10 items-center justify-center rounded-lg bg-secondary text-brand-indigo">
+                  <FeatureIcon className="size-5" aria-hidden />
+                </div>
+                <h2 className="text-base leading-tight text-brand-cocoa">
+                  {feature.title}
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-brand-lavender">
+                  {feature.description}
+                </p>
+              </article>
+            );
+          })}
+        </section>
+      </div>
 
       {hasAuthDialog ? (
         <div className="fixed inset-0 flex items-center justify-center bg-brand-cocoa/35 px-5 backdrop-blur-sm">
