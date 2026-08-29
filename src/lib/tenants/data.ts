@@ -16,6 +16,7 @@ import { normalizePhoneDigits } from "@/lib/phone";
 import { tenantPathTag, tenantTag } from "@/lib/tenants/cache-tags";
 import { isValidTenantSlug } from "@/lib/tenants/paths";
 
+export const MAX_TENANTS_PER_OWNER = 5;
 export const PRAYER_REQUEST_MIN_LENGTH = 3;
 export const PRAYER_REQUEST_MAX_LENGTH = 2000;
 export const PRAYER_CONTACT_NAME_MAX_LENGTH = 120;
@@ -74,6 +75,7 @@ export class TenantError extends Error {
       | "invalid-tenant"
       | "reserved-tenant"
       | "tenant-taken"
+      | "tenant-limit"
       | "not-found"
       | "forbidden"
   ) {
@@ -266,10 +268,23 @@ export async function createDraftTenant({
   const prayerPageRef = tenantRef.collection("pages").doc("pedido-de-oracao");
 
   await db.runTransaction(async (transaction) => {
-    const existingTenant = await transaction.get(tenantRef);
+    // Both reads must precede every write in a Firestore transaction.
+    const [existingTenant, ownerTenants] = await Promise.all([
+      transaction.get(tenantRef),
+      transaction.get(
+        db.collection("tenants").where("ownerUid", "==", ownerUid)
+      ),
+    ]);
 
     if (existingTenant.exists) {
       throw new TenantError("Este link ja esta em uso.", "tenant-taken");
+    }
+
+    if (ownerTenants.size >= MAX_TENANTS_PER_OWNER) {
+      throw new TenantError(
+        `Limite de ${MAX_TENANTS_PER_OWNER} minisites por conta atingido.`,
+        "tenant-limit"
+      );
     }
 
     const now = FieldValue.serverTimestamp();
@@ -464,28 +479,39 @@ export async function updateTenantConfig({
 }) {
   await getOwnerTenant(tenant, ownerUid, canAccessAllTenants);
 
-  const cleanInstitutionName = institutionName?.trim();
-  const cleanDescription = description?.trim();
-  const cleanThemeId = themeId?.trim();
   const tenantPatch: Record<string, unknown> = {
     updatedAt: FieldValue.serverTimestamp(),
   };
   const homePatch: Record<string, unknown> = {
     updatedAt: FieldValue.serverTimestamp(),
   };
+  let touchHome = false;
 
-  if (cleanInstitutionName) {
-    tenantPatch.institutionName = cleanInstitutionName;
-    homePatch.title = cleanInstitutionName;
+  // An absent field means "leave unchanged"; an empty string means "clear".
+  // institutionName and themeId may not be cleared, description may.
+  if (institutionName !== undefined) {
+    const clean = institutionName.trim();
+
+    if (clean) {
+      tenantPatch.institutionName = clean;
+      homePatch.title = clean;
+      touchHome = true;
+    }
   }
 
-  if (cleanDescription) {
-    tenantPatch.description = cleanDescription;
-    homePatch.description = cleanDescription;
+  if (description !== undefined) {
+    const clean = description.trim();
+    tenantPatch.description = clean;
+    homePatch.description = clean;
+    touchHome = true;
   }
 
-  if (cleanThemeId) {
-    tenantPatch.themeId = cleanThemeId;
+  if (themeId !== undefined) {
+    const clean = themeId.trim();
+
+    if (clean) {
+      tenantPatch.themeId = clean;
+    }
   }
 
   const db = getAdminDb();
@@ -494,7 +520,7 @@ export async function updateTenantConfig({
 
   batch.update(tenantRef, tenantPatch);
 
-  if (homePatch.title || homePatch.description) {
+  if (touchHome) {
     batch.update(tenantRef.collection("pages").doc("home"), homePatch);
   }
 

@@ -11,6 +11,7 @@ import {
   toTemplateTheme,
   type AdminSearchParams,
 } from "@/lib/admin/context";
+import { tenantLogoUrl } from "@/lib/tenants/paths";
 
 type AdminBioLinkPageProps = {
   searchParams: AdminSearchParams;
@@ -60,7 +61,7 @@ export default async function AdminBioLinkPage({
           description={selectedTenant.description}
           logoPreviewUrl={
             selectedTenant.logoPath
-              ? `/api/minisites/${selectedTenant.tenant}/logo`
+              ? tenantLogoUrl(selectedTenant.tenant, selectedTenant.updatedAt)
               : undefined
           }
           theme={toTemplateTheme(selectedTenant.themeId)}

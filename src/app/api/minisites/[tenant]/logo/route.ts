@@ -35,7 +35,9 @@ export async function GET(_request: Request, { params }: LogoRouteContext) {
 
     return new Response(new Uint8Array(buffer), {
       headers: {
-        "cache-control": "public, max-age=300",
+        // URLs carry a ?v= version tied to the tenant's updatedAt, so the CDN
+        // may hold a copy for a year: any logo change produces a new URL.
+        "cache-control": "public, max-age=3600, s-maxage=31536000, stale-while-revalidate=86400",
         "content-type": config.logoPath.endsWith(".png")
           ? "image/png"
           : config.logoPath.endsWith(".webp")

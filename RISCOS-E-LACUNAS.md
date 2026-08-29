@@ -16,20 +16,48 @@ As seções correspondentes registram o que foi feito e o que ficou de fora.
 | 1 | Endpoint público de pedidos sem proteção contra abuso | Alta | M | Segurança | ✅ resolvido (captcha adiado) |
 | 2 | Rota de contato sem verificação de posse | Alta | P | Segurança | ✅ resolvido |
 | 3 | Upload de logo sem validação | Alta | P | Segurança | ✅ resolvido |
-| 4 | Sem limite de tenants por conta | Média | P | Abuso | pendente |
+| 4 | Sem limite de tenants por conta | Média | P | Abuso | ✅ resolvido |
 | 5 | Regras do Firestore/Storage fora do repositório | Média | M | Segurança / IaC | ✅ resolvido |
-| 6 | Sem security headers em `next.config.ts` | Média | P | Segurança | pendente |
-| 7 | Rota de logo é proxy caro | Média | M | Performance | pendente |
-| 8 | Sem CI | Média | P | Processo | pendente |
-| 9 | Cobertura de teste desequilibrada | Média | G | Qualidade | pendente |
+| 6 | Sem security headers em `next.config.ts` | Média | P | Segurança | ✅ resolvido (CSP adiada) |
+| 7 | Rota de logo é proxy caro | Média | M | Performance | ✅ resolvido |
+| 8 | Sem CI | Média | P | Processo | ✅ resolvido |
+| 9 | Cobertura de teste desequilibrada | Média | G | Qualidade | 🟡 parcial (rate limiter coberto) |
 | 10 | `create-your-own-flow.tsx` com 1017 linhas | Baixa | M | Manutenção | pendente |
-| 11 | Impossível apagar a descrição do minisite | Baixa | P | Bug de produto | pendente |
+| 11 | Impossível apagar a descrição do minisite | Baixa | P | Bug de produto | ✅ resolvido |
 | 12 | Adotar Cache Components em vez de `unstable_cache` | Baixa | M | Dívida técnica | pendente (opcional) |
 | 13 | Bucket fora do Firebase Storage: `storage.rules` não se aplica | Média | M | Segurança / IaC | ✅ resolvido |
-| 14 | Índice de collection group ausente: SSG silenciosamente desligado | Média | P | Performance | ✅ índice criado (aguardando build) |
+| 14 | Índice de collection group ausente: SSG silenciosamente desligado | Média | P | Performance | ✅ resolvido e verificado |
 | 15 | Limite de 2 MB da logo rejeita imagens já em uso | Média | P | Produto | ✅ decidido: manter 2 MB |
 
 ---
+
+## Registro da iteração de 2026-08-28 (branch `hardening/medium-backlog`)
+
+- **Item 4:** `createDraftTenant` conta os tenants do dono dentro da mesma transação (leituras antes
+  das escritas) e recusa a partir de `MAX_TENANTS_PER_OWNER = 5` com `TenantError("tenant-limit")`,
+  mapeado para 403 na rota.
+- **Item 6:** `next.config.ts` aplica HSTS, `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy` e
+  `Permissions-Policy` a todas as rotas. **CSP adiada de propósito** — o allowlist do popup do
+  Firebase Auth e do Google Fonts precisa ser construído contra o app real.
+- **Item 7:** URLs de logo agora carregam `?v=<updatedAt>` (`tenantLogoUrl` em `paths.ts`), o que
+  permitiu subir o cache do proxy para `s-maxage=31536000` com `stale-while-revalidate`. Uma troca
+  de logo muda o `updatedAt`, gera URL nova e o CDN busca de novo; o `download()` do GCS vira raro.
+- **Item 8:** `package-lock.json` ressincronizado (`npm ci` estava quebrado por entradas `@emnapi/*`
+  ausentes) e workflow `.github/workflows/ci.yml` com `npm ci` + lint + testes + build em PRs e na
+  `main`. O build em CI roda sem secrets do Firebase — `generateStaticParams` degrada para zero
+  páginas pré-renderizadas, o que basta para validar o build.
+- **Item 9 (parcial):** `rate-limit.test.ts` cobre janela fixa, negação com `retry-after`, reset de
+  janela, falha aberta e ordem das regras (6 testes; suíte em 50).
+- **Item 11:** `updateTenantConfig` distingue campo ausente (não mexe) de string vazia (limpa);
+  `description` pode ser limpa, `institutionName` e `themeId` não.
+- **Item 14 verificado:** a causa do primeiro deploy "sem efeito" era o `firebase.json` sem a chave
+  `"indexes"`. Corrigido, o índice construiu em ~4 min e o build passou a gerar 30 páginas estáticas
+  (16 de tenants) contra 14 antes.
+- **Bug novo encontrado e corrigido:** `unstable_cache` serializa para JSON, então `Date` volta como
+  string no cache hit — `config.updatedAt.getTime()` quebrou o primeiro build com SSG real.
+  `tenantLogoUrl` normaliza com `new Date(...)`. Os demais campos `Date` de `TenantConfig`/`TenantPage`
+  têm o mesmo risco latente quando lidos através do cache; hoje nenhum outro é usado assim, mas é uma
+  armadilha a lembrar (a tipagem promete `Date` e o runtime entrega string).
 
 ## 1. Endpoint público de pedidos de oração sem proteção contra abuso
 

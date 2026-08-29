@@ -46,3 +46,16 @@ export function pathToSlugSegments(path: string) {
 
   return path.replace(/^\/+/, "").split("/").filter(Boolean);
 }
+
+export function tenantLogoUrl(
+  tenant: string,
+  updatedAt?: Date | string | number
+) {
+  // The version param makes the URL change whenever the tenant is updated,
+  // which is what allows the logo route to serve long-lived CDN caching.
+  // updatedAt may arrive as a string: unstable_cache serializes cached
+  // values to JSON, so Date fields come back as ISO strings on cache hits.
+  const time = updatedAt ? new Date(updatedAt).getTime() : 0;
+
+  return `/api/minisites/${tenant}/logo?v=${Number.isFinite(time) ? time : 0}`;
+}
