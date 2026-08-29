@@ -1,12 +1,25 @@
 import "server-only";
 
+import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+
 import { unstable_cache } from "next/cache";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 
 import { getAdminDb, getAdminStorage } from "@/lib/firebase/admin";
+import {
+  detectLogoImageType,
+  LOGO_MAX_BYTES,
+  logoContentType,
+  logoExtension,
+} from "@/lib/images";
 import { normalizePhoneDigits } from "@/lib/phone";
 import { tenantPathTag, tenantTag } from "@/lib/tenants/cache-tags";
 import { isValidTenantSlug } from "@/lib/tenants/paths";
+
+export const PRAYER_REQUEST_MIN_LENGTH = 3;
+export const PRAYER_REQUEST_MAX_LENGTH = 2000;
+export const PRAYER_CONTACT_NAME_MAX_LENGTH = 120;
+export const CONTACT_TOKEN_TTL_MS = 30 * 60 * 1000;
 
 export type TenantStatus = "draft" | "published";
 
@@ -50,6 +63,9 @@ export type PrayerRequest = {
   createdAt?: Date;
   contactUpdatedAt?: Date;
 };
+
+/** Bad input from a caller. Routes map this to a 400. */
+export class ValidationError extends Error {}
 
 export class TenantError extends Error {
   constructor(
@@ -145,6 +161,21 @@ function assertTenantSlug(tenant: string) {
   if (!isValidTenantSlug(tenant)) {
     throw new TenantError("Tenant invalido.", "invalid-tenant");
   }
+}
+
+function hashContactToken(token: string) {
+  return createHash("sha256").update(token).digest("hex");
+}
+
+function matchesContactToken(token: string, storedHash: unknown) {
+  if (typeof storedHash !== "string" || storedHash.length !== 64) {
+    return false;
+  }
+
+  const provided = Buffer.from(hashContactToken(token), "hex");
+  const stored = Buffer.from(storedHash, "hex");
+
+  return provided.length === stored.length && timingSafeEqual(provided, stored);
 }
 
 async function getTenantConfigUncached(tenant: string) {
@@ -515,20 +546,41 @@ export async function saveTenantLogo({
   canAccessAllTenants?: boolean;
   file: File;
 }) {
-  await getOwnerTenant(tenant, ownerUid, canAccessAllTenants);
+  const config = await getOwnerTenant(tenant, ownerUid, canAccessAllTenants);
+
+  if (file.size > LOGO_MAX_BYTES) {
+    throw new ValidationError("Logo acima do tamanho maximo permitido.");
+  }
+
+  const bytes = Buffer.from(await file.arrayBuffer());
+
+  if (bytes.byteLength > LOGO_MAX_BYTES) {
+    throw new ValidationError("Logo acima do tamanho maximo permitido.");
+  }
+
+  const imageType = detectLogoImageType(bytes);
+
+  if (!imageType) {
+    throw new ValidationError("Envie uma imagem PNG, JPEG ou WebP.");
+  }
 
   const bucket = getAdminStorage().bucket();
-  const bytes = Buffer.from(await file.arrayBuffer());
-  const extension =
-    file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
-  const logoPath = `tenants/${tenant}/logo.${extension}`;
+  const logoPath = `tenants/${tenant}/logo.${logoExtension(imageType)}`;
 
   await bucket.file(logoPath).save(bytes, {
-    contentType: file.type || "application/octet-stream",
+    contentType: logoContentType(imageType),
     metadata: {
       cacheControl: "public, max-age=31536000",
     },
   });
+
+  // A new format writes to a new path, so the previous file would linger.
+  if (config.logoPath && config.logoPath !== logoPath) {
+    await bucket
+      .file(config.logoPath)
+      .delete()
+      .catch(() => null);
+  }
 
   await getAdminDb().collection("tenants").doc(tenant).update({
     logoPath,
@@ -549,9 +601,24 @@ export async function createPrayerRequest({
 
   const cleanMessage = message.trim();
 
-  if (cleanMessage.length < 3) {
-    throw new Error("Pedido de oração vazio.");
+  if (cleanMessage.length < PRAYER_REQUEST_MIN_LENGTH) {
+    throw new ValidationError("Pedido de oração vazio.");
   }
+
+  if (cleanMessage.length > PRAYER_REQUEST_MAX_LENGTH) {
+    throw new ValidationError("Pedido de oração muito longo.");
+  }
+
+  // Firestore creates subcollections implicitly, so without this check a
+  // request could be written under a tenant that does not exist.
+  const config = await getTenantConfig(tenant);
+
+  if (!config || config.status !== "published") {
+    throw new TenantError("Minisite nao encontrado.", "not-found");
+  }
+
+  // Handed to the visitor so only they can attach contact details later.
+  const contactToken = randomBytes(32).toString("base64url");
 
   const requestRef = await getAdminDb()
     .collection("tenants")
@@ -560,30 +627,37 @@ export async function createPrayerRequest({
     .add({
       message: cleanMessage,
       status: "new",
+      wantsContact: false,
+      contactTokenHash: hashContactToken(contactToken),
+      contactTokenExpiresAt: Timestamp.fromMillis(
+        Date.now() + CONTACT_TOKEN_TTL_MS
+      ),
       createdAt: FieldValue.serverTimestamp(),
     });
 
-  return requestRef.id;
+  return { id: requestRef.id, contactToken };
 }
 
 export async function addPrayerRequestContact({
   tenant,
   requestId,
+  token,
   name,
   whatsapp,
 }: {
   tenant: string;
   requestId: string;
+  token: string;
   name: string;
   whatsapp: string;
 }) {
   assertTenantSlug(tenant);
 
-  const cleanName = name.trim();
+  const cleanName = name.trim().slice(0, PRAYER_CONTACT_NAME_MAX_LENGTH);
   const cleanWhatsapp = whatsapp.trim();
 
-  if (!requestId || (!cleanName && !cleanWhatsapp)) {
-    throw new Error("Contato vazio.");
+  if (!requestId || !token || !cleanWhatsapp) {
+    throw new ValidationError("Contato invalido.");
   }
 
   const requestRef = getAdminDb()
@@ -594,7 +668,23 @@ export async function addPrayerRequestContact({
   const snapshot = await requestRef.get();
 
   if (!snapshot.exists) {
-    throw new Error("Pedido de oração não encontrado.");
+    throw new TenantError("Pedido de oração não encontrado.", "not-found");
+  }
+
+  const data = snapshot.data() ?? {};
+
+  if (data.wantsContact === true) {
+    throw new ValidationError("Contato ja registrado para este pedido.");
+  }
+
+  const expiresAt = timestampToDate(data.contactTokenExpiresAt);
+
+  if (!expiresAt || expiresAt.getTime() < Date.now()) {
+    throw new ValidationError("Prazo para enviar o contato expirou.");
+  }
+
+  if (!matchesContactToken(token, data.contactTokenHash)) {
+    throw new TenantError("Voce nao pode alterar este pedido.", "forbidden");
   }
 
   await requestRef.update({
@@ -602,5 +692,8 @@ export async function addPrayerRequestContact({
     contactName: cleanName,
     contactWhatsapp: normalizePhoneDigits(cleanWhatsapp),
     contactUpdatedAt: FieldValue.serverTimestamp(),
+    // Single use: burn the token so the contact cannot be overwritten.
+    contactTokenHash: FieldValue.delete(),
+    contactTokenExpiresAt: FieldValue.delete(),
   });
 }

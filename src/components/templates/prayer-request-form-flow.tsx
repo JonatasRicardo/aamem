@@ -10,6 +10,7 @@ type PrayerStatus = "idle" | "loading" | "success" | "error";
 
 type PrayerRequestResponse = {
   id?: string;
+  contactToken?: string;
 };
 
 export function PrayerRequestFormFlow({
@@ -28,6 +29,7 @@ export function PrayerRequestFormFlow({
   >("idle");
   const [contactError, setContactError] = useState<string | undefined>();
   const [requestId, setRequestId] = useState<string | null>(null);
+  const [contactToken, setContactToken] = useState<string | null>(null);
 
   async function handleSubmit(message: string) {
     setStatus("loading");
@@ -47,6 +49,7 @@ export function PrayerRequestFormFlow({
       const payload = (await response.json()) as PrayerRequestResponse;
 
       setRequestId(payload.id ?? null);
+      setContactToken(payload.contactToken ?? null);
       setStatus("success");
     } catch {
       setStatus("error");
@@ -66,13 +69,13 @@ export function PrayerRequestFormFlow({
     setContactStatus("loading");
     setContactError(undefined);
 
-    if (requestId) {
+    if (requestId && contactToken) {
       const response = await fetch(
         `/api/tenants/${tenant}/prayer-requests/${requestId}/contact`,
         {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify(contact),
+          body: JSON.stringify({ ...contact, token: contactToken }),
         }
       ).catch(() => null);
 

@@ -4,7 +4,13 @@ import { NextResponse } from "next/server";
 import { getAdminStorage } from "@/lib/firebase/admin";
 import { getCurrentUser } from "@/lib/auth/session";
 import { isSuperAdmin } from "@/lib/admin/context";
-import { getTenantConfig, saveTenantLogo, TenantError } from "@/lib/tenants/data";
+import { LOGO_MAX_BYTES } from "@/lib/images";
+import {
+  getTenantConfig,
+  saveTenantLogo,
+  TenantError,
+  ValidationError,
+} from "@/lib/tenants/data";
 import { tenantTag } from "@/lib/tenants/cache-tags";
 import { normalizeTenantSlug } from "@/lib/tenants/paths";
 
@@ -51,6 +57,16 @@ export async function POST(request: Request, { params }: LogoRouteContext) {
 
   const { tenant: rawTenant } = await params;
   const tenant = normalizeTenantSlug(rawTenant);
+  const contentLength = Number(request.headers.get("content-length") ?? 0);
+
+  // Checked before parsing so an oversized body is never buffered in memory.
+  if (contentLength > LOGO_MAX_BYTES) {
+    return NextResponse.json(
+      { error: "Logo acima do tamanho maximo permitido." },
+      { status: 413 }
+    );
+  }
+
   const formData = await request.formData();
   const file = formData.get("logo");
 
@@ -70,6 +86,10 @@ export async function POST(request: Request, { params }: LogoRouteContext) {
 
     return NextResponse.json({ logoPath });
   } catch (error) {
+    if (error instanceof ValidationError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
     if (error instanceof TenantError) {
       return NextResponse.json({ error: error.message }, { status: 403 });
     }

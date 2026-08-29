@@ -1,0 +1,12 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Logos are written by saveTenantLogo and read back through
+    // GET /api/minisites/[tenant]/logo, both via the Admin SDK, which bypasses
+    // these rules. Nothing in the browser talks to Storage directly.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

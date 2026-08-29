@@ -98,9 +98,27 @@ Important API routes:
 - `POST /api/minisites` creates a draft tenant and returns the admin editor redirect.
 - `PATCH /api/minisites/[tenant]` saves minisite draft changes.
 - `POST /api/minisites/[tenant]/publish` publishes the tenant pages and revalidates the public routes.
-- `POST /api/tenants/[tenant]/prayer-requests` stores a public prayer request.
-- `POST /api/tenants/[tenant]/prayer-requests/[requestId]/contact` adds optional contact data to a request.
+- `POST /api/tenants/[tenant]/prayer-requests` stores a public prayer request and returns a
+  single-use `contactToken`.
+- `POST /api/tenants/[tenant]/prayer-requests/[requestId]/contact` adds optional contact data to a
+  request, and requires the `contactToken` returned by the call above.
 - `DELETE /api/account` deletes the owner account and owned tenant data.
+
+### Public endpoint protection
+
+The two prayer request routes are intentionally unauthenticated, so they carry their own limits:
+
+- Requests are only accepted for a tenant that exists and is published.
+- Messages are capped at 2.000 characters.
+- Creating a request mints a `contactToken`, stored on the document only as a SHA-256 hash with a
+  30 minute expiry. The contact route verifies it in constant time and burns it on use, so contact
+  data can be attached exactly once, by the visitor who wrote the request.
+- Both routes are rate limited by IP, and request creation is additionally limited per tenant. The
+  counters live in the `rateLimits` Firestore collection (see Data Model) and return `429` with a
+  `retry-after` header.
+
+Logo uploads are limited to 2 MB and validated by magic bytes, so the accepted formats are PNG,
+JPEG and WebP regardless of the `content-type` the client declares.
 
 Public pages use cached Firestore reads with tenant cache tags. Publishing revalidates the tenant and path tags so the public minisite updates after admin changes.
 
@@ -130,7 +148,16 @@ Prayer request fields:
 - `status`: request state, currently created as `new`.
 - `wantsContact`: whether the visitor requested follow-up.
 - `contactName`, `contactWhatsapp`: optional follow-up fields.
+- `contactTokenHash`, `contactTokenExpiresAt`: single-use credential for the contact step, removed
+  once the contact is saved.
 - `createdAt`, `contactUpdatedAt`: timestamps.
+
+Rate limit counters are kept in a top-level `rateLimits` collection, one document per fixed window:
+
+- `count`: hits in the current window.
+- `windowStartedAt`: window start, in milliseconds.
+- `expiresAt`: window end. Configure a Firestore TTL policy on this field so old counters are
+  collected automatically.
 
 ## Environment Variables
 
@@ -167,6 +194,61 @@ FIREBASE_SERVICE_ACCOUNT_KEY=
 GOOGLE_APPLICATION_CREDENTIALS=
 FIREBASE_CONFIG=
 ```
+
+## Firebase Configuration
+
+Security rules and index settings are versioned in this repository and deployed with the Firebase
+CLI. The project id lives in `.firebaserc`.
+
+```bash
+npm run firebase:rules            # deploys firestore.rules
+npm run firebase:rules:storage    # deploys storage.rules (needs Storage provisioned first)
+npm run firebase:indexes:export   # writes the live index config to firestore.indexes.json
+npm run firebase:indexes          # deploys firestore.indexes.json
+```
+
+Storage rules deploy to the Firebase default bucket (`aamem-7df99.firebasestorage.app`). The
+console provisioned it in locked mode with the same deny-all rules, so the deploy aligns the live
+state with the versioned file.
+
+The scripts call `npx firebase-tools`, so there is no global install to keep in sync. Run
+`npx firebase-tools login` once before the first deploy.
+
+Both rule files deny every direct client request. All data access goes through the Firebase Admin
+SDK on the server, which bypasses security rules, and the client SDK is used only for
+authentication. If browser-side Firestore or Storage access is ever added, these rules must be
+opened deliberately.
+
+> **Careful:** `npm run firebase:indexes` removes any index or field exemption that is not present
+> in `firestore.indexes.json`. Always export before deploying for the first time.
+
+### Storage bucket
+
+The canonical bucket is `aamem-7df99.firebasestorage.app` (Firebase Storage, `us-east1`,
+provisioned 2026-08-27 in locked mode). `FIREBASE_STORAGE_BUCKET` and
+`NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` must point at it.
+
+Logos previously lived in `aamem-7df99-minisite-logos`, a plain GCS bucket in
+`southamerica-east1` created outside the Firebase Storage product, which Firebase security rules
+cannot govern. The five Firestore-referenced logos were copied to the Firebase bucket on
+2026-08-27; the old bucket is kept temporarily as a fallback and can be deleted once production
+has been verified on the new one.
+
+Bucket region note: Vercel serverless functions run in `iad1` (us-east) by default, and every logo
+read goes through the `/api/minisites/[tenant]/logo` proxy, so a `us-east1` bucket sits next to the
+functions. If function regions ever move to `gru1`, revisit this.
+
+### TTL policy
+
+The `rateLimits` TTL policy (timestamp field `expiresAt`) **is** versioned: it appears in
+`firestore.indexes.json` as `"ttl": true` on the field override, and `npm run firebase:indexes`
+applies it. The same override disables all single-field indexes for `expiresAt`, which is
+recommended for TTL fields (monotonically increasing timestamps hotspot their index, and nothing
+queries this field).
+
+The TTL policy only controls storage growth. The rate limiter decides windows by comparing
+timestamps, so an expired document that has not been collected yet behaves exactly like a missing
+one, and nothing depends on the deletion being timely. Deletion typically lags expiry by up to 24h.
 
 ## Development Commands
 
