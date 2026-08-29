@@ -47,6 +47,10 @@ export async function POST(request: Request) {
       );
     }
 
+    if (error instanceof TenantError && error.code === "tenant-limit") {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
+
     return NextResponse.json(
       { error: "Nao foi possivel criar o minisite." },
       { status: 500 }

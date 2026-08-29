@@ -15,6 +15,7 @@ import {
   normalizeTenantSlug,
   pathToSlugSegments,
   slugSegmentsToPath,
+  tenantLogoUrl,
 } from "@/lib/tenants/paths";
 
 export const dynamicParams = true;
@@ -72,7 +73,7 @@ export default async function PublicTenantPage({ params }: PublicTenantPageProps
       <PrayerRequestFormFlow
         tenant={tenant}
         institutionName={config.institutionName}
-        logoUrl={config.logoPath ? `/api/minisites/${tenant}/logo` : undefined}
+        logoUrl={config.logoPath ? tenantLogoUrl(tenant, config.updatedAt) : undefined}
       />
     );
   }
@@ -83,7 +84,7 @@ export default async function PublicTenantPage({ params }: PublicTenantPageProps
         institutionName={config.institutionName}
         slug={tenant}
         description={config.description}
-        logoUrl={config.logoPath ? `/api/minisites/${tenant}/logo` : undefined}
+        logoUrl={config.logoPath ? tenantLogoUrl(tenant, config.updatedAt) : undefined}
         prayerRequestHref={`/${tenant}/pedido-de-oracao`}
         theme={toTemplateTheme(config.themeId)}
       />
