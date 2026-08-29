@@ -1,0 +1,13 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Every read and write goes through the Firebase Admin SDK on the server,
+    // which bypasses these rules entirely. The client SDK is used only for
+    // authentication (src/lib/firebase/client.ts), never for data access, so
+    // there is no legitimate direct-from-browser path to deny here.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

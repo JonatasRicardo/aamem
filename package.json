@@ -14,7 +14,11 @@
     "test:coverage": "vitest run --project unit --coverage",
     "test:storybook": "vitest run --project storybook",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "firebase:rules": "npx firebase-tools deploy --only firestore:rules",
+    "firebase:rules:storage": "npx firebase-tools deploy --only storage",
+    "firebase:indexes": "npx firebase-tools deploy --only firestore:indexes",
+    "firebase:indexes:export": "npx firebase-tools firestore:indexes > firestore.indexes.json"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",
