@@ -3,7 +3,10 @@ import { ArrowLeft } from "lucide-react";
 
 import { AdminMinisiteFlow } from "@/components/templates/admin-minisite-flow";
 import { AdminTenantSelector } from "@/components/templates/admin-tenant-selector";
-import { LogoutButton } from "@/components/templates/admin-home-actions";
+import {
+  DeleteMinisiteButton,
+  LogoutButton,
+} from "@/components/templates/admin-home-actions";
 import { Button } from "@/components/ui/button";
 import {
   adminTenantHref,
@@ -67,6 +70,25 @@ export default async function AdminBioLinkPage({
           theme={toTemplateTheme(selectedTenant.themeId)}
           isPublished={selectedTenant.status === "published"}
         />
+
+        <section
+          aria-label="Excluir minisite"
+          className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-destructive/25 bg-white/70 p-4"
+        >
+          <div className="space-y-1">
+            <h2 className="text-base leading-tight text-brand-cocoa">
+              Excluir minisite
+            </h2>
+            <p className="text-sm leading-6 text-brand-lavender">
+              Apaga aamem.com/{selectedTenant.tenant} e os pedidos de oração
+              recebidos. Ação permanente.
+            </p>
+          </div>
+          <DeleteMinisiteButton
+            tenant={selectedTenant.tenant}
+            institutionName={selectedTenant.institutionName}
+          />
+        </section>
       </div>
     </main>
   );

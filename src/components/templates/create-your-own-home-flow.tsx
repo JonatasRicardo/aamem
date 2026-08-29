@@ -35,6 +35,7 @@ export function CreateYourOwnHomeFlow({
   const [authDialogState, setAuthDialogState] =
     useState<AuthDialogState>("closed");
   const [loginStatus, setLoginStatus] = useState<"idle" | "loading">("idle");
+  const [createError, setCreateError] = useState("");
   const [isCreatePending, startCreateTransition] = useTransition();
   const [isAdminPending, startAdminTransition] = useTransition();
 
@@ -82,14 +83,25 @@ export function CreateYourOwnHomeFlow({
       return;
     }
 
+    setCreateError("");
     setAuthDialogState("open");
   }
 
   async function handleGoogleContinue() {
+    setCreateError("");
     setAuthDialogState("returning");
-    try {
-      const { idToken } = await signInWithGoogle();
 
+    let idToken: string;
+
+    try {
+      ({ idToken } = await signInWithGoogle());
+    } catch {
+      setAuthDialogState("closed");
+      setCreateError("Não foi possível entrar com o Google. Tente novamente.");
+      return;
+    }
+
+    try {
       const sessionResponse = await fetch("/api/auth/session", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -97,7 +109,7 @@ export function CreateYourOwnHomeFlow({
       });
 
       if (!sessionResponse.ok) {
-        throw new Error("Nao foi possivel criar a sessao.");
+        throw new Error("Não foi possível criar a sessão. Tente novamente.");
       }
 
       const minisiteResponse = await fetch("/api/minisites", {
@@ -105,18 +117,29 @@ export function CreateYourOwnHomeFlow({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ tenant: slugInput }),
       });
-      const payload = (await minisiteResponse.json()) as MinisiteResponse;
+      const payload = (await minisiteResponse.json().catch(() => ({}))) as
+        MinisiteResponse;
 
       if (!minisiteResponse.ok || !payload.redirectTo) {
-        throw new Error(payload.error ?? "Nao foi possivel criar o minisite.");
+        if (minisiteResponse.status === 409) {
+          setSlugStatus("unavailable");
+        }
+
+        throw new Error(
+          payload.error ?? "Não foi possível criar o minisite agora."
+        );
       }
 
       startCreateTransition(() => {
         router.push(payload.redirectTo!);
       });
-    } catch {
+    } catch (error) {
       setAuthDialogState("closed");
-      setSlugStatus("error");
+      setCreateError(
+        error instanceof Error && error.message
+          ? error.message
+          : "Não foi possível criar o minisite agora."
+      );
     }
   }
 
@@ -155,10 +178,16 @@ export function CreateYourOwnHomeFlow({
     }
   }
 
+  function handleSlugChange(nextSlug: string) {
+    setCreateError("");
+    setRawSlug(nextSlug);
+  }
+
   return (
     <HomeCreateTemplate
       slug={slugInput}
       slugStatus={displaySlugStatus}
+      createError={createError}
       authDialogState={authDialogState}
       ctaState={isCreatePending ? "loading" : "idle"}
       currentUserName={currentUser?.name ?? currentUser?.email}
@@ -168,7 +197,7 @@ export function CreateYourOwnHomeFlow({
       onCreate={handleCreate}
       onLogin={handleLogin}
       onGoogleContinue={handleGoogleContinue}
-      onSlugChange={setRawSlug}
+      onSlugChange={handleSlugChange}
     />
   );
 }

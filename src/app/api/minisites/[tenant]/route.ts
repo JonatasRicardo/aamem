@@ -4,7 +4,11 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/session";
 import { isSuperAdmin } from "@/lib/admin/context";
 import { tenantTag } from "@/lib/tenants/cache-tags";
-import { TenantError, updateTenantConfig } from "@/lib/tenants/data";
+import {
+  deleteTenant,
+  TenantError,
+  updateTenantConfig,
+} from "@/lib/tenants/data";
 import { normalizeTenantSlug } from "@/lib/tenants/paths";
 
 type MinisiteRouteContext = {
@@ -50,6 +54,48 @@ export async function PATCH(request: Request, { params }: MinisiteRouteContext) 
 
     return NextResponse.json(
       { error: "Nao foi possivel salvar o minisite." },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(
+  _request: Request,
+  { params }: MinisiteRouteContext
+) {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    return NextResponse.json({ error: "Sessao obrigatoria." }, { status: 401 });
+  }
+
+  const { tenant: rawTenant } = await params;
+  const tenant = normalizeTenantSlug(rawTenant);
+
+  try {
+    await deleteTenant({
+      tenant,
+      ownerUid: user.uid,
+      canAccessAllTenants: isSuperAdmin(user),
+    });
+
+    revalidateTag(tenantTag(tenant), "max");
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    if (error instanceof TenantError) {
+      const status =
+        error.code === "not-found"
+          ? 404
+          : error.code === "forbidden"
+            ? 403
+            : 400;
+
+      return NextResponse.json({ error: error.message }, { status });
+    }
+
+    return NextResponse.json(
+      { error: "Nao foi possivel excluir o minisite." },
       { status: 500 }
     );
   }

@@ -46,6 +46,7 @@ export type HomeCreateTemplateProps = {
   loginState?: HomeCreateCtaState;
   slug?: string;
   slugStatus?: SlugStatus;
+  createError?: string;
   authDialogState?: AuthDialogState;
   onCreate?: () => void;
   onLogin?: () => void;
@@ -525,6 +526,7 @@ export function HomeCreateTemplate({
   loginState = "idle",
   slug = "igreja-da-graca",
   slugStatus = "available",
+  createError,
   authDialogState = "closed",
   onCreate,
   onLogin,
@@ -634,6 +636,19 @@ export function HomeCreateTemplate({
                   <SlugFeedback status={slugStatus} />
                 </div>
               </div>
+
+              {createError ? (
+                <div
+                  className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-sm leading-6 text-destructive"
+                  role="alert"
+                >
+                  <CircleAlert
+                    className="mt-1 size-4 shrink-0"
+                    aria-hidden="true"
+                  />
+                  {createError}
+                </div>
+              ) : null}
 
               <Button
                 className="h-12 w-full rounded-lg px-4 text-base"

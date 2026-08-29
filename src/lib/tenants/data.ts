@@ -404,6 +404,29 @@ export async function deleteOwnerTenants(ownerUid: string) {
   return tenants;
 }
 
+export async function deleteTenant({
+  tenant,
+  ownerUid,
+  canAccessAllTenants = false,
+}: {
+  tenant: string;
+  ownerUid: string;
+  canAccessAllTenants?: boolean;
+}) {
+  const config = await getOwnerTenant(tenant, ownerUid, canAccessAllTenants);
+  const db = getAdminDb();
+
+  await db.recursiveDelete(db.collection("tenants").doc(tenant));
+
+  if (config.logoPath) {
+    await getAdminStorage()
+      .bucket()
+      .file(config.logoPath)
+      .delete()
+      .catch(() => null);
+  }
+}
+
 export async function getOwnerTenant(
   tenant: string,
   ownerUid: string,

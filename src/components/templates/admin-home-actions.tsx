@@ -240,6 +240,134 @@ export function LogoutButton() {
   );
 }
 
+export function DeleteMinisiteButton({
+  tenant,
+  institutionName,
+}: {
+  tenant: string;
+  institutionName: string;
+}) {
+  const router = useRouter();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState("");
+
+  function handleOpenModal() {
+    setError("");
+    setIsModalOpen(true);
+  }
+
+  function handleConfirmDelete() {
+    setError("");
+    startTransition(async () => {
+      const response = await fetch(`/api/minisites/${tenant}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => ({}))) as {
+          error?: string;
+        };
+
+        setError(payload.error ?? "Não foi possível excluir o minisite agora.");
+        return;
+      }
+
+      setIsModalOpen(false);
+      router.replace("/admin");
+      router.refresh();
+    });
+  }
+
+  return (
+    <>
+      <Button
+        type="button"
+        variant="destructive"
+        className="h-9"
+        onClick={handleOpenModal}
+      >
+        <Trash2 aria-hidden="true" />
+        excluir minisite
+      </Button>
+
+      {isModalOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-brand-cocoa/45 px-5 backdrop-blur-sm">
+          <section
+            aria-label="Confirmar exclusão do minisite"
+            className="w-full max-w-sm rounded-lg border border-border bg-background p-5 text-left shadow-2xl"
+            role="dialog"
+            aria-modal="true"
+          >
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div className="space-y-1">
+                <p className="font-mono text-xs text-muted-foreground">aamém</p>
+                <h2 className="text-xl leading-tight text-brand-cocoa">
+                  Excluir {institutionName}?
+                </h2>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Fechar confirmação"
+                disabled={isPending}
+                onClick={() => setIsModalOpen(false)}
+              >
+                <X aria-hidden="true" />
+              </Button>
+            </div>
+
+            <p className="text-sm leading-6 text-brand-lavender">
+              Isso apaga o minisite{" "}
+              <span className="font-mono text-brand-cocoa">
+                aamem.com/{tenant}
+              </span>
+              , suas páginas e todos os pedidos de oração recebidos. Esta ação
+              não pode ser desfeita.
+            </p>
+
+            {error ? (
+              <p
+                className="mt-3 text-sm leading-6 text-destructive"
+                role="alert"
+              >
+                {error}
+              </p>
+            ) : null}
+
+            <div className="mt-5 grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="h-11"
+                disabled={isPending}
+                onClick={() => setIsModalOpen(false)}
+              >
+                cancelar
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                className="h-11"
+                disabled={isPending}
+                onClick={handleConfirmDelete}
+              >
+                {isPending ? (
+                  <Loader2 className="animate-spin" aria-hidden="true" />
+                ) : (
+                  <Trash2 aria-hidden="true" />
+                )}
+                excluir
+              </Button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+    </>
+  );
+}
+
 export function DeleteAccountButton() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
